@@ -6,9 +6,9 @@
 
 **Why Phase A first:** The dev machine has only Command Line Tools, not Xcode.app, so we cannot build a Mac `.app` bundle yet. Pure SwiftPM only needs `swift` and lets us TDD the entire core. Phase B (the app shell) will be unblocked once Xcode is installed.
 
-**Architecture:** Single SwiftPM library target `SpaceRenamerCore` containing the seven Core components, plus a test target `SpaceRenamerCoreTests`. KeyboardShortcuts is a package dependency (used in Phase B's HotkeyManager registration, but its types are referenced by `HotkeyManager` in this phase).
+**Architecture:** Single SwiftPM library target `SpaceRenamerCore` containing six Core components (the seventh, `HotkeyManager`, is deferred to Phase B because its `KeyboardShortcuts` dependency requires full Xcode to build — `#Preview` macros in that package can't compile under Command Line Tools alone). A test target `SpaceRenamerCoreTests` covers the three pure components.
 
-**Tech Stack:** Swift 5.10+, AppKit (for `NSWorkspace`), CoreGraphics, Combine, XCTest, [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) Swift Package, macOS 13+ deployment target.
+**Tech Stack:** Swift 5.10+, AppKit (for `NSWorkspace`), CoreGraphics, Combine, XCTest, macOS 13+ deployment target. **No KeyboardShortcuts dependency in Phase A** — added in Phase B with the rest of the app shell.
 
 **Reference:** Original full plan with Phase B tasks at `docs/superpowers/plans/2026-05-15-space-renamer.md`. Design spec at `docs/superpowers/specs/2026-05-15-space-renamer-design.md`.
 
@@ -26,7 +26,6 @@ rnd/
 │       ├── SpaceMonitor.swift
 │       ├── KeystrokeSynthesizer.swift
 │       ├── SwitcherEngine.swift
-│       ├── HotkeyManager.swift
 │       └── SystemShortcutChecker.swift
 └── Tests/
     └── SpaceRenamerCoreTests/
@@ -39,6 +38,8 @@ rnd/
             ├── spaces-9.plist
             └── spaces-reordered.plist
 ```
+
+`HotkeyManager` (Task A8 in the old numbering) is deferred to Phase B — see note on that task below.
 
 ---
 
@@ -62,6 +63,8 @@ DerivedData/
 
 - [ ] **Step 2: Write `Package.swift`**
 
+No external dependencies — KeyboardShortcuts is deferred to Phase B because its `#Preview` macros require full Xcode.
+
 ```swift
 // swift-tools-version: 5.10
 import PackageDescription
@@ -77,15 +80,9 @@ let package = Package(
             targets: ["SpaceRenamerCore"]
         ),
     ],
-    dependencies: [
-        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.0.0"),
-    ],
     targets: [
         .target(
-            name: "SpaceRenamerCore",
-            dependencies: [
-                .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
-            ]
+            name: "SpaceRenamerCore"
         ),
         .testTarget(
             name: "SpaceRenamerCoreTests",
@@ -136,7 +133,7 @@ swift package resolve 2>&1 | tail -5
 swift build 2>&1 | tail -10
 ```
 
-Expected: dependency resolution succeeds (KeyboardShortcuts fetched), `Build complete!`.
+Expected: `swift package resolve` is a no-op (no deps); `swift build` succeeds with `Build complete!`.
 
 - [ ] **Step 7: Run tests**
 
@@ -150,7 +147,7 @@ Expected: `Test Suite 'PlaceholderTests' passed`, 1 test.
 
 ```bash
 git add .gitignore Package.swift Sources Tests
-git commit -m "chore: scaffold SwiftPM package with KeyboardShortcuts dep"
+git commit -m "chore: scaffold SwiftPM package for SpaceRenamerCore"
 ```
 
 ---
@@ -939,73 +936,9 @@ git commit -m "feat: SwitcherEngine resolves UUID to Ctrl+N keystroke"
 
 ---
 
-## Task A8: HotkeyManager — KeyboardShortcuts Wrapper
+## Task A8: HotkeyManager — DEFERRED TO PHASE B
 
-**Files:**
-- Create: `Sources/SpaceRenamerCore/HotkeyManager.swift`
-
-- [ ] **Step 1: Write HotkeyManager**
-
-```swift
-// Sources/SpaceRenamerCore/HotkeyManager.swift
-import Foundation
-import KeyboardShortcuts
-
-extension KeyboardShortcuts.Name {
-    public static let openMenu = Self("openMenu")
-    public static func space(_ uuid: String) -> Self { Self("space.\(uuid)") }
-}
-
-public final class HotkeyManager {
-    /// Callback fired when a Space's hotkey is pressed. Argument is the Space UUID.
-    public var onSpaceHotkey: ((String) -> Void)?
-    /// Callback fired when the open-menu hotkey is pressed.
-    public var onOpenMenu: (() -> Void)?
-
-    private var registeredUUIDs: Set<String> = []
-
-    public init() {
-        KeyboardShortcuts.onKeyUp(for: .openMenu) { [weak self] in
-            self?.onOpenMenu?()
-        }
-    }
-
-    /// Ensure each currently-known UUID has its keyUp handler registered.
-    /// Safe to call repeatedly; registration is idempotent per UUID.
-    public func sync(knownUUIDs: [String]) {
-        for uuid in knownUUIDs where !registeredUUIDs.contains(uuid) {
-            let name = KeyboardShortcuts.Name.space(uuid)
-            KeyboardShortcuts.onKeyUp(for: name) { [weak self] in
-                self?.onSpaceHotkey?(uuid)
-            }
-            registeredUUIDs.insert(uuid)
-        }
-    }
-}
-```
-
-- [ ] **Step 2: Build**
-
-```bash
-swift build 2>&1 | tail -5
-```
-
-Expected: `Build complete!`.
-
-- [ ] **Step 3: Run all tests (regression check)**
-
-```bash
-swift test 2>&1 | tail -10
-```
-
-Expected: all suites still pass.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add Sources/SpaceRenamerCore/HotkeyManager.swift
-git commit -m "feat: HotkeyManager wraps KeyboardShortcuts for per-Space + open-menu"
-```
+`HotkeyManager` depends on the KeyboardShortcuts Swift Package, which uses SwiftUI `#Preview` macros that fail to compile under Command Line Tools alone (they need the full Xcode `PreviewsMacros` plugin). Since the rest of Phase A doesn't need it and the entire UI layer is already deferred to Phase B, `HotkeyManager` ships with Phase B alongside `MenuBarController` / `PreferencesWindowController`. Skip this task; see the original full plan at `docs/superpowers/plans/2026-05-15-space-renamer.md` Task 9 for the implementation.
 
 ---
 
