@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>SpacesDisplayConfiguration</key>
+  <dict>
+    <key>Management Data</key>
+    <dict>
+      <key>Monitors</key>
+      <array>
+        <dict>
+          <key>Display Identifier</key>
+          <string>Main</string>
+          <key>Spaces</key>
+          <array>
+            <dict><key>uuid</key><string></string><key>ManagedSpaceID</key><integer>1</integer><key>id64</key><integer>1</integer><key>wsid</key><integer>1</integer><key>type</key><integer>0</integer></dict>
+            <dict><key>uuid</key><string>9DD24797-CA38-435A-8F4C-1EE03CB1B7CA</string><key>ManagedSpaceID</key><integer>3</integer><key>id64</key><integer>3</integer><key>type</key><integer>0</integer></dict>
+            <dict><key>uuid</key><string>8B3CC061-9B05-4356-A685-81E538C8DBAD</string><key>ManagedSpaceID</key><integer>4</integer><key>id64</key><integer>4</integer><key>type</key><integer>0</integer></dict>
+            <dict><key>uuid</key><string>B39FF9FA-F09B-40AA-9C64-C3C3E8EF661B</string><key>ManagedSpaceID</key><integer>5</integer><key>id64</key><integer>5</integer><key>type</key><integer>0</integer></dict>
+          </array>
+          <key>Current Space</key>
+          <dict><key>uuid</key><string></string><key>ManagedSpaceID</key><integer>1</integer><key>id64</key><integer>1</integer><key>wsid</key><integer>1</integer><key>type</key><integer>0</integer></dict>
+        </dict>
+      </array>
+    </dict>
+  </dict>
+</dict>
+</plist>

@@ -13,15 +13,10 @@
           <string>Main</string>
           <key>Spaces</key>
           <array>
-            <dict>
-              <key>uuid</key><string>uuid-1</string>
-              <key>type</key><integer>0</integer>
-            </dict>
+            <dict><key>uuid</key><string></string><key>ManagedSpaceID</key><integer>1</integer><key>type</key><integer>0</integer></dict>
           </array>
           <key>Current Space</key>
-          <dict>
-            <key>uuid</key><string>uuid-1</string>
-          </dict>
+          <dict><key>uuid</key><string></string><key>ManagedSpaceID</key><integer>1</integer></dict>
         </dict>
       </array>
     </dict>
