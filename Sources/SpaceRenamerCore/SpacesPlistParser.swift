@@ -33,6 +33,7 @@ public enum SpacesPlistParser {
               let managementData = config["Management Data"] as? [String: Any] else {
             throw SpacesPlistError.missingConfiguration
         }
+        // Primary monitor only; multi-display handling is tracked as a separate Phase A hardening task.
         guard let monitors = managementData["Monitors"] as? [[String: Any]],
               let primary = monitors.first else {
             throw SpacesPlistError.noMonitors

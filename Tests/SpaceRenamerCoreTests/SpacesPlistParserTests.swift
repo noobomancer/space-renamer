@@ -39,11 +39,15 @@ final class SpacesPlistParserTests: XCTestCase {
     }
 
     func test_emptyPlist_throws() {
-        XCTAssertThrowsError(try SpacesPlistParser.parse([:]))
+        XCTAssertThrowsError(try SpacesPlistParser.parse([:])) { err in
+            XCTAssertEqual(err as? SpacesPlistError, .missingConfiguration)
+        }
     }
 
     func test_missingMonitors_throws() {
         let bad: [String: Any] = ["SpacesDisplayConfiguration": ["Management Data": [String: Any]()]]
-        XCTAssertThrowsError(try SpacesPlistParser.parse(bad))
+        XCTAssertThrowsError(try SpacesPlistParser.parse(bad)) { err in
+            XCTAssertEqual(err as? SpacesPlistError, .noMonitors)
+        }
     }
 }
