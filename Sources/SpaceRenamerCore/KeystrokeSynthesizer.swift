@@ -24,12 +24,16 @@ public struct CGKeystrokeSynthesizer: KeystrokeSynthesizing {
         let keyMap: [CGKeyCode] = [18, 19, 20, 21, 23, 22, 26, 28, 25]
         let keyCode = keyMap[digit - 1]
 
-        let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
-        down?.flags = .maskControl
-        down?.post(tap: .cgAnnotatedSessionEventTap)
+        guard let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true) else {
+            throw KeystrokeError.eventSourceUnavailable
+        }
+        down.flags = .maskControl
+        down.post(tap: .cgAnnotatedSessionEventTap)
 
-        let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
-        up?.flags = .maskControl
-        up?.post(tap: .cgAnnotatedSessionEventTap)
+        guard let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false) else {
+            throw KeystrokeError.eventSourceUnavailable
+        }
+        up.flags = .maskControl
+        up.post(tap: .cgAnnotatedSessionEventTap)
     }
 }
