@@ -33,6 +33,7 @@ macOS Spaces are always labeled "Desktop 1", "Desktop 2", … in Mission Control
 | D6 | **Swift + AppKit** (`NSStatusItem`, `NSMenu`, `NSAlert`, AppKit window) | SwiftUI `MenuBarExtra` | AppKit gives finer control over status-item and menu quirks; SwiftUI's menu bar API is less mature. |
 | D7 | **Bar title shows the active Space's custom name** | Just an icon | User requested name; gives at-a-glance feedback even when menu is closed. |
 | D8 | **macOS 13+ minimum** | Older macOS | Allows `SMAppService` for Launch-at-Login and modern Swift concurrency. |
+| D9 | **`@MainActor`-isolate the stateful Core** (`NameStore`, `SpaceMonitor`, `SwitcherEngine`, `OrdinalLookup`); pure/stateless types (`SpacesPlistParser`, `KeystrokeSynthesizing`, `SystemShortcutChecker`) stay non-isolated | `os_unfair_lock`/serial-queue locking; `actor` types | App is a main-thread-driven AppKit menu-bar app. `@MainActor` compiler-enforces "`reload()` & `@Published` mutation are main-only", serializes `NameStore`'s non-atomic UserDefaults read-modify-write, and keeps Combine→AppKit observation correct — least complexity. Locks over-engineer it; `actor`s fight `@Published` + synchronous menu builds. Swift 5 language mode retained; Swift 6 strict-concurrency deferred to app-target creation. See *Design Revision 2026-05-16*. |
 
 ### Design Revision — 2026-05-15 (identity model)
 
@@ -52,6 +53,10 @@ Empirical capture (4 spaces, default desktop active):
 **Open verification (deferred to Phase B smoke test):** confirm `ManagedSpaceID` stability across logout/reboot and space delete-then-recreate.
 
 The Architecture, Components, Data Flow, and Testing sections below have been updated in-place to the new terminology (`ParsedSpace.id`, `activeID`, `spaceID`, `ManagedSpaceID`); no read-through substitution is required. Any remaining literal "uuid" refers to the raw plist field (now unused for identity) or unrelated contexts (e.g. test-suite name randomizers).
+
+### Design Revision — 2026-05-16 (threading model)
+
+Phase A left the Core's threading contract undefined (the final Phase A review flagged `SpaceMonitor.reload()`/`@Published` mutable from any thread and `NameStore`'s non-atomic UserDefaults read-modify-write). Resolved in Phase B task #18 (see D9): `NameStore`, `SpaceMonitor`, `SwitcherEngine`, and the `OrdinalLookup` protocol are `@MainActor`; `SpacesPlistParser`, `KeystrokeSynthesizing`/`CGKeystrokeSynthesizer`, `SystemShortcutChecker` stay non-isolated (pure/stateless — callable from `@MainActor` safely). `SpaceMonitor`'s notification observer hops via `Task { @MainActor in … }` (macOS-13-safe; no `MainActor.assumeIsolated`). Consequences for Phase B: construct `NameStore`/`SpaceMonitor`/`SwitcherEngine` in a main-actor context, and inject a named `UserDefaults` suite into `NameStore` (concrete suite name fixed with the app bundle id; `.standard` default retained only for tests). `swift-tools-version: 5.10` / Swift 5 language mode retained; full Swift 6 strict-concurrency adoption (incl. the `deinit`-touches-isolated-`observer` and unstructured-`Task` gaps) is deferred to the Xcode app-target task and separately tracked.
 
 ## Architecture
 
