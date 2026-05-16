@@ -13,6 +13,18 @@ public struct ParsedSpace: Equatable {
     }
 }
 
+public extension ParsedSpace {
+    /// Highest 1-based ordinal reachable via the macOS "Switch to Desktop N"
+    /// shortcut (Ctrl+1…Ctrl+9). The single source of truth for the >9 rule —
+    /// `SwitcherEngine` and the menu UI both derive from this.
+    static let maxShortcutOrdinal = 9
+
+    /// `true` iff this Space can be switched to via a Ctrl+digit shortcut
+    /// (ordinal 1…`maxShortcutOrdinal`). Spaces beyond this are name-only in
+    /// the UI; `SwitcherEngine.switch(to:)` throws `.ordinalOutOfRange` for them.
+    var isShortcutAvailable: Bool { (1...ParsedSpace.maxShortcutOrdinal).contains(ordinal) }
+}
+
 public struct ParsedSpaces: Equatable {
     public let spaces: [ParsedSpace]
     public let activeID: String?

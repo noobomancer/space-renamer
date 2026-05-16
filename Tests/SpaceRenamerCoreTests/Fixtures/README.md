@@ -9,5 +9,6 @@ Per-Space identity is the integer `ManagedSpaceID` (see design spec D1 / 2026-05
 - `spaces-9.plist` — nine Spaces MSID 1..9, active = 5.
 - `spaces-reordered.plist` — Spaces in slot order MSID 3,1,2, active = 1.
 - `spaces-real.plist` — captured-shape: 4 spaces; default desktop (slot 0) has empty uuid + ManagedSpaceID 1 and is active; others MSID 3,4,5 with real-looking UUIDs.
+- `spaces-10.plist` — ten Spaces MSID 1..10, active = 1; pins the >9 shortcut boundary (ordinal 10 has no Ctrl+digit).
 
 Used by `SpacesPlistParserTests`.

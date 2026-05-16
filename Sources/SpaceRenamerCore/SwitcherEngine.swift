@@ -31,7 +31,7 @@ public enum SwitcherError: Error, Equatable {
     public func `switch`(to id: String) throws {
         guard let lookup else { throw SwitcherError.lookupUnavailable }
         guard let ordinal = lookup.ordinal(for: id) else { throw SwitcherError.unknownSpace }
-        guard (1...9).contains(ordinal) else { throw SwitcherError.ordinalOutOfRange }
+        guard (1...ParsedSpace.maxShortcutOrdinal).contains(ordinal) else { throw SwitcherError.ordinalOutOfRange }
         try synthesizer.postControlDigit(ordinal)
     }
 }

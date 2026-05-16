@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>SpacesDisplayConfiguration</key>
+  <dict>
+    <key>Management Data</key>
+    <dict>
+      <key>Monitors</key>
+      <array>
+        <dict>
+          <key>Display Identifier</key>
+          <string>Main</string>
+          <key>Spaces</key>
+          <array>
+            <dict><key>uuid</key><string></string><key>ManagedSpaceID</key><integer>1</integer><key>type</key><integer>0</integer></dict>
+            <dict><key>uuid</key><string>UUID-2</string><key>ManagedSpaceID</key><integer>2</integer><key>type</key><integer>0</integer></dict>
+            <dict><key>uuid</key><string>UUID-3</string><key>ManagedSpaceID</key><integer>3</integer><key>type</key><integer>0</integer></dict>
+            <dict><key>uuid</key><string>UUID-4</string><key>ManagedSpaceID</key><integer>4</integer><key>type</key><integer>0</integer></dict>
+            <dict><key>uuid</key><string>UUID-5</string><key>ManagedSpaceID</key><integer>5</integer><key>type</key><integer>0</integer></dict>
+            <dict><key>uuid</key><string>UUID-6</string><key>ManagedSpaceID</key><integer>6</integer><key>type</key><integer>0</integer></dict>
+            <dict><key>uuid</key><string>UUID-7</string><key>ManagedSpaceID</key><integer>7</integer><key>type</key><integer>0</integer></dict>
+            <dict><key>uuid</key><string>UUID-8</string><key>ManagedSpaceID</key><integer>8</integer><key>type</key><integer>0</integer></dict>
+            <dict><key>uuid</key><string>UUID-9</string><key>ManagedSpaceID</key><integer>9</integer><key>type</key><integer>0</integer></dict>
+            <dict><key>uuid</key><string>UUID-10</string><key>ManagedSpaceID</key><integer>10</integer><key>type</key><integer>0</integer></dict>
+          </array>
+          <key>Current Space</key>
+          <dict><key>uuid</key><string></string><key>ManagedSpaceID</key><integer>1</integer></dict>
+        </dict>
+      </array>
+    </dict>
+  </dict>
+</dict>
+</plist>
