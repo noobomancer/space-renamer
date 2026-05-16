@@ -1,0 +1,44 @@
+name: SpaceRenamer
+options:
+  bundleIdPrefix: com.saint
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+
+packages:
+  SpaceRenamerCore:
+    path: .
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: "2.0.0"
+
+targets:
+  SpaceRenamer:
+    type: application
+    platform: macOS
+    sources:
+      - path: SpaceRenamerApp
+    resources:
+      - SpaceRenamerApp/Resources/Assets.xcassets
+    info:
+      path: SpaceRenamerApp/App/Info.plist
+      properties:
+        CFBundleName: Space Renamer
+        CFBundleDisplayName: Space Renamer
+        LSUIElement: true
+        NSSupportsAutomaticTermination: false
+        NSSupportsSuddenTermination: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.saint.SpaceRenamer
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        SWIFT_VERSION: "5.0"
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "-"
+    dependencies:
+      - package: SpaceRenamerCore
+        product: SpaceRenamerCore
+      - package: KeyboardShortcuts

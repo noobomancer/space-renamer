@@ -3,3 +3,5 @@
 .swiftpm/
 Package.resolved
 DerivedData/
+SpaceRenamer.xcodeproj/
+*.xcodeproj/xcuserdata/
