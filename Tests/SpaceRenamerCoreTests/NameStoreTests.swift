@@ -18,36 +18,36 @@ final class NameStoreTests: XCTestCase {
         super.tearDown()
     }
 
-    func test_unknownUUID_returnsDefaultNameUsingOrdinal() {
-        XCTAssertEqual(store.name(for: "uuid-abc", defaultOrdinal: 3), "Desktop 3")
+    func test_unknownSpaceID_returnsDefaultNameUsingOrdinal() {
+        XCTAssertEqual(store.name(for: "42", defaultOrdinal: 3), "Desktop 3")
     }
 
     func test_setName_persists() {
-        store.setName("uuid-abc", "Research")
-        XCTAssertEqual(store.name(for: "uuid-abc", defaultOrdinal: 1), "Research")
+        store.setName("42", "Research")
+        XCTAssertEqual(store.name(for: "42", defaultOrdinal: 1), "Research")
     }
 
     func test_setName_emptyString_revertsToDefault() {
-        store.setName("uuid-abc", "Research")
-        store.setName("uuid-abc", "")
-        XCTAssertEqual(store.name(for: "uuid-abc", defaultOrdinal: 2), "Desktop 2")
+        store.setName("42", "Research")
+        store.setName("42", "")
+        XCTAssertEqual(store.name(for: "42", defaultOrdinal: 2), "Desktop 2")
     }
 
     func test_setName_whitespaceOnly_revertsToDefault() {
-        store.setName("uuid-abc", "   ")
-        XCTAssertEqual(store.name(for: "uuid-abc", defaultOrdinal: 4), "Desktop 4")
+        store.setName("42", "   ")
+        XCTAssertEqual(store.name(for: "42", defaultOrdinal: 4), "Desktop 4")
     }
 
     func test_forget_removesName() {
-        store.setName("uuid-abc", "Research")
-        store.forget("uuid-abc")
-        XCTAssertEqual(store.name(for: "uuid-abc", defaultOrdinal: 5), "Desktop 5")
+        store.setName("42", "Research")
+        store.forget("42")
+        XCTAssertEqual(store.name(for: "42", defaultOrdinal: 5), "Desktop 5")
     }
 
     func test_namesSurviveStoreReconstruction() {
-        store.setName("uuid-abc", "Research")
+        store.setName("42", "Research")
         let reborn = NameStore(defaults: defaults)
-        XCTAssertEqual(reborn.name(for: "uuid-abc", defaultOrdinal: 1), "Research")
+        XCTAssertEqual(reborn.name(for: "42", defaultOrdinal: 1), "Research")
     }
 
     func test_systemShortcutsWarningFlag_defaultsFalse_thenPersists() {

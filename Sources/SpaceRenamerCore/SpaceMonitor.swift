@@ -3,7 +3,7 @@ import Combine
 
 public final class SpaceMonitor {
     @Published public private(set) var spaces: [ParsedSpace] = []
-    @Published public private(set) var activeUUID: String?
+    @Published public private(set) var activeID: String?
 
     private let plistURL: URL
     private var observer: NSObjectProtocol?
@@ -35,13 +35,13 @@ public final class SpaceMonitor {
             let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any] ?? [:]
             let parsed = try SpacesPlistParser.parse(plist)
             self.spaces = parsed.spaces
-            self.activeUUID = parsed.activeUUID
+            self.activeID = parsed.activeID
         } catch {
             NSLog("SpaceMonitor: failed to read plist: \(error)")
         }
     }
 
-    public func ordinal(for uuid: String) -> Int? {
-        spaces.first(where: { $0.uuid == uuid })?.ordinal
+    public func ordinal(for id: String) -> Int? {
+        spaces.first(where: { $0.id == id })?.ordinal
     }
 }

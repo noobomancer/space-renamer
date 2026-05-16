@@ -12,25 +12,25 @@ final class SwitcherEngineTests: XCTestCase {
 
     private final class FakeOrdinalLookup: OrdinalLookup {
         var table: [String: Int] = [:]
-        func ordinal(for uuid: String) -> Int? { table[uuid] }
+        func ordinal(for id: String) -> Int? { table[id] }
     }
 
-    func test_switch_postsCtrlDigitForKnownUUID() throws {
+    func test_switch_postsCtrlDigitForKnownID() throws {
         let synth = FakeSynthesizer()
         let lookup = FakeOrdinalLookup()
-        lookup.table = ["uuid-a": 1, "uuid-b": 3]
+        lookup.table = ["1": 1, "3": 3]
         let engine = SwitcherEngine(synthesizer: synth, lookup: lookup)
 
-        try engine.switch(to: "uuid-b")
+        try engine.switch(to: "3")
 
         XCTAssertEqual(synth.posted, [3])
     }
 
-    func test_switch_unknownUUID_throws() {
+    func test_switch_unknownID_throws() {
         let synth = FakeSynthesizer()
         let lookup = FakeOrdinalLookup()
         let engine = SwitcherEngine(synthesizer: synth, lookup: lookup)
-        XCTAssertThrowsError(try engine.switch(to: "uuid-missing")) { err in
+        XCTAssertThrowsError(try engine.switch(to: "999")) { err in
             XCTAssertEqual(err as? SwitcherError, .unknownSpace)
         }
         XCTAssertTrue(synth.posted.isEmpty)
@@ -39,9 +39,9 @@ final class SwitcherEngineTests: XCTestCase {
     func test_switch_ordinalOver9_throws() {
         let synth = FakeSynthesizer()
         let lookup = FakeOrdinalLookup()
-        lookup.table = ["uuid-a": 10]
+        lookup.table = ["7": 10]
         let engine = SwitcherEngine(synthesizer: synth, lookup: lookup)
-        XCTAssertThrowsError(try engine.switch(to: "uuid-a")) { err in
+        XCTAssertThrowsError(try engine.switch(to: "7")) { err in
             XCTAssertEqual(err as? SwitcherError, .ordinalOutOfRange)
         }
         XCTAssertTrue(synth.posted.isEmpty)

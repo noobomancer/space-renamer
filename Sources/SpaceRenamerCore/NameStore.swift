@@ -4,7 +4,7 @@ public final class NameStore {
     private let defaults: UserDefaults
 
     private enum Key {
-        static let names = "SpaceRenamer.names"               // [UUID: String]
+        static let names = "SpaceRenamer.names"               // [SpaceID: String]
         static let warned = "SpaceRenamer.didWarnSystemShortcuts"
     }
 
@@ -17,25 +17,25 @@ public final class NameStore {
         set { defaults.set(newValue, forKey: Key.names) }
     }
 
-    public func name(for uuid: String, defaultOrdinal: Int) -> String {
-        if let custom = names[uuid], !custom.isEmpty { return custom }
+    public func name(for spaceID: String, defaultOrdinal: Int) -> String {
+        if let custom = names[spaceID], !custom.isEmpty { return custom }
         return "Desktop \(defaultOrdinal)"
     }
 
-    public func setName(_ uuid: String, _ name: String) {
+    public func setName(_ spaceID: String, _ name: String) {
         var dict = names
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            dict.removeValue(forKey: uuid)
+            dict.removeValue(forKey: spaceID)
         } else {
-            dict[uuid] = trimmed
+            dict[spaceID] = trimmed
         }
         names = dict
     }
 
-    public func forget(_ uuid: String) {
+    public func forget(_ spaceID: String) {
         var dict = names
-        dict.removeValue(forKey: uuid)
+        dict.removeValue(forKey: spaceID)
         names = dict
     }
 
