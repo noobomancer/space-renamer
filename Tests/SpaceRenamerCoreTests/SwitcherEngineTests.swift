@@ -44,5 +44,6 @@ final class SwitcherEngineTests: XCTestCase {
         XCTAssertThrowsError(try engine.switch(to: "uuid-a")) { err in
             XCTAssertEqual(err as? SwitcherError, .ordinalOutOfRange)
         }
+        XCTAssertTrue(synth.posted.isEmpty)
     }
 }
