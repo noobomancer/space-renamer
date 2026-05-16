@@ -51,8 +51,9 @@ import os
             self.activeID = parsed.activeID
             self.lastLoadError = nil
         } catch {
-            self.lastLoadError = String(describing: error)
-            Self.logger.error("SpaceMonitor: failed to read plist: \(String(describing: error), privacy: .public)")
+            let description = String(describing: error)
+            self.lastLoadError = description
+            Self.logger.error("SpaceMonitor: failed to read plist: \(description, privacy: .public)")
         }
     }
 

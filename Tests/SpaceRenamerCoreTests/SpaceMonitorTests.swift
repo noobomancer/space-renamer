@@ -8,7 +8,7 @@ final class SpaceMonitorTests: XCTestCase {
         try XCTUnwrap(Bundle.module.url(forResource: name, withExtension: "plist", subdirectory: "Fixtures"))
     }
 
-    func test_validPlist_loadsSpacesAndClearsError() throws {
+    func test_validPlist_loadsSpacesAndNilError() throws {
         let monitor = SpaceMonitor(plistURL: try fixtureURL("spaces-3"))
         XCTAssertEqual(monitor.spaces.map { $0.id }, ["1", "2", "3"])
         XCTAssertEqual(monitor.activeID, "2")
@@ -32,5 +32,25 @@ final class SpaceMonitorTests: XCTestCase {
         let monitor = SpaceMonitor(plistURL: badURL)
         XCTAssertTrue(monitor.spaces.isEmpty)
         XCTAssertNotNil(monitor.lastLoadError)
+    }
+
+    func test_recoveryReload_clearsErrorAndPublishesSpaces() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SpaceMonitorTests-recovery-\(UUID().uuidString).plist")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        // No file at `url` yet → monitor starts degraded.
+        let monitor = SpaceMonitor(plistURL: url)
+        XCTAssertNotNil(monitor.lastLoadError)
+        XCTAssertTrue(monitor.spaces.isEmpty)
+
+        // Write a valid plist to the same path and reload → recovers.
+        let goodData = try Data(contentsOf: try fixtureURL("spaces-3"))
+        try goodData.write(to: url)
+        monitor.reload()
+
+        XCTAssertNil(monitor.lastLoadError)
+        XCTAssertEqual(monitor.spaces.map { $0.id }, ["1", "2", "3"])
+        XCTAssertEqual(monitor.activeID, "2")
     }
 }
