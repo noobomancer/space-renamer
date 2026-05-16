@@ -19,6 +19,8 @@ import Combine
             object: nil,
             queue: .main
         ) { [weak self] _ in
+            // The Task hop is what guarantees @MainActor isolation for reload();
+            // it's deferred one main hop, so if self is gone the reload is harmlessly skipped.
             Task { @MainActor in self?.reload() }
         }
     }
