@@ -36,6 +36,18 @@ import XCTest
         XCTAssertTrue(synth.posted.isEmpty)
     }
 
+    func test_switch_deallocatedLookup_throwsLookupUnavailable() {
+        let synth = FakeSynthesizer()
+        var lookup: FakeOrdinalLookup? = FakeOrdinalLookup()
+        lookup!.table = ["1": 1]
+        let engine = SwitcherEngine(synthesizer: synth, lookup: lookup!)
+        lookup = nil  // release the only strong reference; engine holds it weakly
+        XCTAssertThrowsError(try engine.switch(to: "1")) { err in
+            XCTAssertEqual(err as? SwitcherError, .lookupUnavailable)
+        }
+        XCTAssertTrue(synth.posted.isEmpty)
+    }
+
     func test_switch_ordinalOver9_throws() {
         let synth = FakeSynthesizer()
         let lookup = FakeOrdinalLookup()
