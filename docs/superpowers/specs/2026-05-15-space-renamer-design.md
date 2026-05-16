@@ -25,7 +25,7 @@ macOS Spaces are always labeled "Desktop 1", "Desktop 2", … in Mission Control
 
 | # | Decision | Alternative considered | Why |
 |---|---|---|---|
-| D1 | **Identify Spaces by UUID** read from `~/Library/Preferences/com.apple.spaces.plist` | Identify by ordinal index (1, 2, 3…) | Names must survive Space reorders. UUIDs are stable; indices are not. |
+| D1 | **Identify Spaces by `ManagedSpaceID`** (the integer space id) read from `~/Library/Preferences/com.apple.spaces.plist` | Identify by `uuid` (original choice); by ordinal index (1, 2, 3…) | Names must survive Space reorders, so the key must be position-independent. The `uuid` field was the original choice but the real plist shows macOS leaves it **empty (`""`) for the default desktop** (and only assigns UUIDs to additional spaces); `ManagedSpaceID`/`id64` is non-empty, unique, and present for every space including the default and in `Current Space`. Indices are not stable across reorders. See *Design Revision 2026-05-15*. |
 | D2 | **Switch Spaces by synthesizing `Ctrl+N` `CGEvent`s** | Private SkyLight `CGSManagedDisplaySetCurrentSpace` | Public API only; survives macOS updates. Trade-off: requires user to keep "Switch to Desktop N" shortcuts enabled in System Settings. |
 | D3 | **Custom global hotkeys via Carbon `RegisterEventHotKey`** | NSEvent local monitor (only works in-app), CGEventTap (more invasive, needs more permissions) | Standard pattern; works system-wide; reliable. |
 | D4 | **Inline rename via right-click → `NSAlert` text-field popover** | Dedicated rename window | Lowest-friction UX; user explicitly chose minimal inline. |
@@ -33,6 +33,25 @@ macOS Spaces are always labeled "Desktop 1", "Desktop 2", … in Mission Control
 | D6 | **Swift + AppKit** (`NSStatusItem`, `NSMenu`, `NSAlert`, AppKit window) | SwiftUI `MenuBarExtra` | AppKit gives finer control over status-item and menu quirks; SwiftUI's menu bar API is less mature. |
 | D7 | **Bar title shows the active Space's custom name** | Just an icon | User requested name; gives at-a-glance feedback even when menu is closed. |
 | D8 | **macOS 13+ minimum** | Older macOS | Allows `SMAppService` for Launch-at-Login and modern Swift concurrency. |
+
+### Design Revision — 2026-05-15 (identity model)
+
+The original design (and brainstorm) chose **`uuid`** as the per-Space identity key (then "Option B"). During Phase A implementation, inspection of the real `~/Library/Preferences/com.apple.spaces.plist` revealed that macOS does **not** assign a UUID to the primary/default desktop — its `uuid` is the empty string `""`, and `Current Space.uuid` is `""` whenever the default desktop is active. Only *additional* spaces receive UUIDs. Keying custom names by `uuid` therefore breaks the feature for the default desktop (no stable name; active-state undetectable).
+
+Empirical capture (4 spaces, default desktop active):
+
+| slot | `uuid` | `ManagedSpaceID` / `id64` |
+|---|---|---|
+| 0 (default, active) | `''` | 1 |
+| 1 | `9DD24797-…` | 3 |
+| 2 | `8B3CC061-…` | 4 |
+| 3 | `B39FF9FA-…` | 5 |
+
+**Resolution (user-approved):** the per-Space identity key is now the **decimal-string form of `ManagedSpaceID`** (e.g. `"1"`, `"3"`). It is non-empty, unique, present for every space and in `Current Space`, and position-independent (still survives reorders — the original Option-B goal). It is stored as a `String` so `NameStore` and the rest of the pipeline stay string-keyed with minimal churn.
+
+**Open verification (deferred to Phase B smoke test):** confirm `ManagedSpaceID` stability across logout/reboot and space delete-then-recreate.
+
+The Architecture, Components, Data Flow, and Testing sections below have been updated in-place to the new terminology (`ParsedSpace.id`, `activeID`, `spaceID`, `ManagedSpaceID`); no read-through substitution is required. Any remaining literal "uuid" refers to the raw plist field (now unused for identity) or unrelated contexts (e.g. test-suite name randomizers).
 
 ## Architecture
 
@@ -47,7 +66,7 @@ Six components, each owning one concern. All communicate via a small set of well
                            ▼
 ┌────────────────┐   ┌──────────────┐   ┌──────────────────┐
 │ NSWorkspace    │──▶│ SpaceMonitor │──▶│ MenuBarController│──┐
-│ activeSpaceDid │   │  (UUIDs +    │   │  (NSStatusItem,  │  │
+│ activeSpaceDid │   │  (IDs +      │   │  (NSStatusItem,  │  │
 │ ChangeNotif.   │   │   ordinals)  │   │   NSMenu)        │  │
 └────────────────┘   └──────┬───────┘   └────────┬─────────┘  │
                             │                    │            │ click
@@ -55,8 +74,8 @@ Six components, each owning one concern. All communicate via a small set of well
                             │             ┌──────────────┐    │
                             │             │  NameStore   │◀───┘
                             │             │ (UserDefaults│
-                            │             │  UUID→name,  │
-                            │             │  UUID→hotkey)│
+                            │             │  ID→name,    │
+                            │             │  ID→hotkey)  │
                             │             └──────┬───────┘
                             │                    │
                             ▼                    ▼
@@ -79,20 +98,20 @@ Six components, each owning one concern. All communicate via a small set of well
 
 **SpaceMonitor**
 - Reads `~/Library/Preferences/com.apple.spaces.plist` and parses the `SpacesDisplayConfiguration → Management Data → Monitors[0]` dict:
-  - `Spaces` array → ordered list of Space dicts; each has a `uuid` field. Ordinal = array index + 1.
-  - `Current Space` → dict whose `uuid` field is the currently-active Space.
-- Exposes `currentSpaces: [(uuid: String, ordinal: Int)]` and `activeSpaceUUID: String?`.
+  - `Spaces` array → ordered list of Space dicts; identity = the integer `ManagedSpaceID` (rendered as a decimal string; see D1 / Design Revision). Ordinal = array index + 1.
+  - `Current Space` → dict whose `ManagedSpaceID` is the currently-active Space.
+- Parsed by the pure `SpacesPlistParser` into `ParsedSpace { id: String, ordinal: Int }` + `activeID: String?`. `SpaceMonitor` exposes `@Published spaces: [ParsedSpace]`, `@Published activeID: String?`, and `ordinal(for id: String) -> Int?`.
 - Subscribes to `NSWorkspace.shared.notificationCenter` `activeSpaceDidChangeNotification`; re-reads the plist on each fire (the notification doesn't carry the new Space's identity directly).
 - Note: macOS caches this plist in memory and may not flush to disk immediately. `SpaceMonitor` calls `CFPreferencesAppSynchronize("com.apple.spaces")` before each read to force a fresh copy.
 - Publishes changes via a delegate / Combine subject so other components react.
 
 **NameStore**
-- Persists three maps in `UserDefaults`:
-  - `UUID → customName: String`
-  - `UUID → hotkey: KeyCombo` (where `KeyCombo` is a small struct: keyCode + modifier flags)
-  - `openMenuHotkey: KeyCombo?`
-- Provides `name(for: UUID, defaultIndex: Int) -> String` returning the custom name or `"Desktop \(defaultIndex)"` fallback.
-- Offers `forget(uuid:)` to remove a Space's stored name and hotkey (used when a Space no longer exists and the user wants to clean up).
+- Persists, keyed by Space ID (decimal `ManagedSpaceID`), in `UserDefaults`:
+  - `SpaceID → customName: String`
+  - `SpaceID → hotkey: KeyCombo` (Phase B; `KeyCombo` = keyCode + modifier flags)
+  - `openMenuHotkey: KeyCombo?` (Phase B)
+- Provides `name(for spaceID: String, defaultOrdinal: Int) -> String` returning the custom name or `"Desktop \(defaultOrdinal)"` fallback.
+- Offers `forget(_ spaceID:)` to remove a Space's stored name (and, in Phase B, hotkey) — used when a Space no longer exists and the user wants to clean up.
 
 **MenuBarController**
 - Owns the `NSStatusItem`. Sets `button.title` to the active Space's name; updates on every `SpaceMonitor` change.
@@ -100,11 +119,11 @@ Six components, each owning one concern. All communicate via a small set of well
   - One `NSMenuItem` per Space, showing the custom name. Active Space gets a checkmark.
   - Right-click on a row opens a context menu with **Rename…** and **Forget Name** actions.
   - Separator, then **Preferences…**, **Launch at Login** (toggle), **Quit**.
-- Click on a row → `SwitcherEngine.switch(to: uuid)`.
+- Click on a row → `SwitcherEngine.switch(to: id)`.
 
 **SwitcherEngine**
-- Single method: `switch(to uuid: String) throws`.
-- Looks up the UUID's current ordinal via `SpaceMonitor`. If not found → throws `unknownSpace`.
+- Single method: `switch(to id: String) throws`.
+- Looks up the Space ID's current ordinal via `SpaceMonitor` (an injected `OrdinalLookup`). If not found → throws `unknownSpace`.
 - If ordinal > 9 → throws `ordinalOutOfRange` (only `Ctrl+1`..`Ctrl+9` exist).
 - Otherwise synthesizes `Ctrl+<digit>` via `CGEvent(keyboardEventSource:virtualKey:keyDown:)` for both keyDown and keyUp, posts on `cgAnnotatedSessionEventTap`.
 - Behind a `KeystrokeSynthesizing` protocol so tests can verify intent without posting real events.
@@ -130,8 +149,8 @@ Six components, each owning one concern. All communicate via a small set of well
 4. `MenuBarController` paints the menu and sets bar title to active Space's name.
 
 ### Switching by menu click
-1. User clicks "Research" → `MenuBarController` → `SwitcherEngine.switch(to: researchUUID)`.
-2. `SwitcherEngine` resolves UUID → ordinal (say, 2) → posts `Ctrl+2`.
+1. User clicks "Research" → `MenuBarController` → `SwitcherEngine.switch(to: researchID)`.
+2. `SwitcherEngine` resolves Space ID → ordinal (say, 2) → posts `Ctrl+2`.
 3. macOS switches Space → `activeSpaceDidChangeNotification` fires → `SpaceMonitor` re-reads → `MenuBarController` updates title to "Research" + checkmark.
 
 ### Switching by hotkey
@@ -139,16 +158,16 @@ Same as above, but entry point is `HotkeyManager`'s callback for that Space's `K
 
 ### User adds / removes / reorders Spaces in Mission Control
 1. macOS posts `activeSpaceDidChangeNotification` (it also fires for layout changes, not just active-space changes).
-2. `SpaceMonitor` re-reads plist. New UUIDs appear; missing UUIDs vanish from `currentSpaces`.
+2. `SpaceMonitor` re-reads plist. New Space IDs appear; missing IDs vanish from `spaces`.
 3. `MenuBarController` rebuilds the menu. New Spaces show default names (`Desktop N`). Removed Spaces disappear from the menu but their stored name/hotkey **stay** in `NameStore` (the user can "Forget" them manually).
 
 ### Inline rename
 1. Right-click row → "Rename…" → `NSAlert` with text field, pre-filled with current name.
-2. On OK → `NameStore.setName(uuid, newName)` → menu rebuilds, bar title updates if affected.
+2. On OK → `NameStore.setName(spaceID, newName)` → menu rebuilds, bar title updates if affected.
 
 ### Hotkey assignment
 1. User opens Preferences, focuses the recorder cell for a Space, presses `⌃⌥D`.
-2. Recorder captures keyCode + modifiers → `NameStore.setHotkey(uuid, combo)`.
+2. Recorder captures keyCode + modifiers → `NameStore.setHotkey(spaceID, combo)`.
 3. `HotkeyManager` unregisters any previous combo for that Space and registers the new one.
 
 ## Edge Cases & Error Handling
@@ -157,7 +176,7 @@ Same as above, but entry point is `HotkeyManager`'s callback for that Space's `K
 |---|---|
 | `Ctrl+N` shortcuts disabled in System Settings | On launch, read `com.apple.symbolichotkeys.plist`; if disabled, show a one-shot alert with a "Open Keyboard Settings" deep link (`x-apple.systempreferences:com.apple.Keyboard-Settings.extension`). Persist a "warned" flag in `UserDefaults` so we don't nag. |
 | More than 9 Spaces | Show all in the menu, but rows for ordinals 10+ are visually marked "(shortcut unavailable)" and disabled. Hotkeys still work because the OS shortcut for that ordinal doesn't exist either. |
-| Plist unreadable or schema unrecognized | `SpaceMonitor` falls back to degraded mode: lists `Desktop 1..N` based on `NSScreen` heuristics; UUID persistence is disabled (warning logged via `os_log`). |
+| Plist unreadable or schema unrecognized | `SpaceMonitor` falls back to degraded mode: lists `Desktop 1..N` based on `NSScreen` heuristics; Space-ID persistence is disabled (warning logged via `os_log`). |
 | Hotkey conflict (`eventHotKeyExistsErr`) | Preferences row shows red ⚠ inline; the new combo is NOT persisted until registration succeeds. |
 | Accessibility permission denied | `AXIsProcessTrustedWithOptions(prompt: true)` on first launch. If denied, menu still renders and renames work; switch attempts show a tooltip "Grant Accessibility access in System Settings → Privacy & Security." |
 | Multi-display, "Displays have separate Spaces" ON | v1: read only the primary display's Spaces from the plist. Document in README. v2 candidate: full multi-display support with per-display sections in the menu. |
@@ -166,9 +185,9 @@ Same as above, but entry point is `HotkeyManager`'s callback for that Space's `K
 ## Testing
 
 ### Unit (XCTest, runs in CI)
-- **`NameStoreTests`** — round-trip name and hotkey persistence; default-name generation; `forget(uuid:)` removes both name and hotkey.
-- **`SpacesPlistParserTests`** — fixture-driven: feed captured plists (1 Space, 3 Spaces, 9 Spaces, reordered Spaces) and assert the parser produces the expected `[(uuid, ordinal)]` list.
-- **`SwitcherEngineTests`** — inject a fake `KeystrokeSynthesizing`; assert that given UUID X at ordinal 3, the engine requests `Ctrl+3` keyDown/keyUp.
+- **`NameStoreTests`** — round-trip name persistence (hotkeys: Phase B); default-name generation; `forget(_ spaceID:)` removes the stored name; warned-flag persistence.
+- **`SpacesPlistParserTests`** — fixture-driven: feed synthetic plists (1 Space, 3 Spaces, 9 Spaces, reordered, and a real-capture fixture with an empty-`uuid` default desktop) and assert the parser produces the expected `[(id, ordinal)]` list + `activeID`, plus negative cases (missing/non-positive `ManagedSpaceID`, missing config/monitors).
+- **`SwitcherEngineTests`** — inject a fake `KeystrokeSynthesizing` + fake `OrdinalLookup`; assert that a Space ID at ordinal 3 makes the engine request `Ctrl+3`, that an unknown ID throws `unknownSpace`, and an ordinal > 9 throws `ordinalOutOfRange` — with no keystroke posted on either error path.
 - **`HotkeyManagerTests`** — fake the Carbon-wrapping protocol; verify register/unregister calls track `NameStore` mutations.
 
 ### Manual smoke checklist (cannot run in CI — needs real Spaces)
@@ -177,7 +196,7 @@ Same as above, but entry point is `HotkeyManager`'s callback for that Space's `K
 3. Rename "Desktop 2" → "Research" → name appears in menu and bar.
 4. Click a non-active row → screen switches; bar title updates.
 5. Add a Space in Mission Control → menu auto-adds it.
-6. Reorder Spaces in Mission Control → renamed Space keeps its name (UUID tracking).
+6. Reorder Spaces in Mission Control → renamed Space keeps its name (`ManagedSpaceID` tracking).
 7. Quit and relaunch → names and hotkeys persist.
 8. Assign `⌃⌥D` to "Research" → press from any app → switches.
 9. Disable "Switch to Desktop N" in System Settings → relaunch → one-shot warning alert appears.
