@@ -28,6 +28,7 @@ final class SpacesPlistParserTests: XCTestCase {
     func test_nineSpaces_fifthActive() throws {
         let result = try SpacesPlistParser.parse(try loadFixture("spaces-9"))
         XCTAssertEqual(result.spaces.count, 9)
+        XCTAssertEqual(result.spaces.map { $0.id }, ["1","2","3","4","5","6","7","8","9"])
         XCTAssertEqual(result.activeID, "5")
     }
 
@@ -66,6 +67,21 @@ final class SpacesPlistParserTests: XCTestCase {
                 "Management Data": [
                     "Monitors": [
                         ["Spaces": [["uuid": "x"]]]
+                    ]
+                ]
+            ]
+        ]
+        XCTAssertThrowsError(try SpacesPlistParser.parse(bad)) { err in
+            XCTAssertEqual(err as? SpacesPlistError, .malformedSpaceEntry)
+        }
+    }
+
+    func test_spaceEntryWithNonPositiveManagedSpaceID_throws() {
+        let bad: [String: Any] = [
+            "SpacesDisplayConfiguration": [
+                "Management Data": [
+                    "Monitors": [
+                        ["Spaces": [["ManagedSpaceID": 0]]]
                     ]
                 ]
             ]

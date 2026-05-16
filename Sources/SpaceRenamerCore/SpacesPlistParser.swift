@@ -43,7 +43,7 @@ public enum SpacesPlistParser {
         }
         let spacesArray = (primary["Spaces"] as? [[String: Any]]) ?? []
         let parsed: [ParsedSpace] = try spacesArray.enumerated().map { idx, dict in
-            guard let managedID = dict["ManagedSpaceID"] as? Int else {
+            guard let managedID = dict["ManagedSpaceID"] as? Int, managedID > 0 else {
                 throw SpacesPlistError.malformedSpaceEntry
             }
             return ParsedSpace(id: String(managedID), ordinal: idx + 1)
