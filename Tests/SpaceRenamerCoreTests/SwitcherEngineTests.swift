@@ -1,7 +1,7 @@
 import XCTest
 @testable import SpaceRenamerCore
 
-final class SwitcherEngineTests: XCTestCase {
+@MainActor final class SwitcherEngineTests: XCTestCase {
 
     private final class FakeSynthesizer: KeystrokeSynthesizing {
         var posted: [Int] = []
@@ -10,7 +10,7 @@ final class SwitcherEngineTests: XCTestCase {
         }
     }
 
-    private final class FakeOrdinalLookup: OrdinalLookup {
+    @MainActor private final class FakeOrdinalLookup: OrdinalLookup {
         var table: [String: Int] = [:]
         func ordinal(for id: String) -> Int? { table[id] }
     }

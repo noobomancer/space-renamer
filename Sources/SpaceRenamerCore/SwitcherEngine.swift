@@ -1,6 +1,6 @@
 import Foundation
 
-public protocol OrdinalLookup: AnyObject {
+@MainActor public protocol OrdinalLookup: AnyObject {
     func ordinal(for id: String) -> Int?
 }
 
@@ -11,7 +11,7 @@ public enum SwitcherError: Error, Equatable {
     case ordinalOutOfRange
 }
 
-public final class SwitcherEngine {
+@MainActor public final class SwitcherEngine {
     private let synthesizer: KeystrokeSynthesizing
     private weak var lookup: OrdinalLookup?
 

@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 public final class NameStore {
     private let defaults: UserDefaults
 

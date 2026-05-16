@@ -1,7 +1,7 @@
 import XCTest
 @testable import SpaceRenamerCore
 
-final class NameStoreTests: XCTestCase {
+@MainActor final class NameStoreTests: XCTestCase {
     private var suiteName: String!
     private var defaults: UserDefaults!
     private var store: NameStore!

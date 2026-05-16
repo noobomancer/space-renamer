@@ -1,7 +1,7 @@
 import AppKit
 import Combine
 
-public final class SpaceMonitor {
+@MainActor public final class SpaceMonitor {
     @Published public private(set) var spaces: [ParsedSpace] = []
     @Published public private(set) var activeID: String?
 
@@ -19,7 +19,7 @@ public final class SpaceMonitor {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.reload()
+            Task { @MainActor in self?.reload() }
         }
     }
 
