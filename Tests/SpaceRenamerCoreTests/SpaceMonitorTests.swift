@@ -53,6 +53,16 @@ final class SpaceMonitorTests: XCTestCase {
         XCTAssertNil(monitor.activeID)
     }
 
+    func test_readerNil_healthyPlist_activeIDNilSpacesLoaded() throws {
+        // SkyLight unavailable (e.g. symbol resolution fails on a future OS):
+        // the Space list still loads from the plist; activeID is nil; no error.
+        let monitor = SpaceMonitor(plistURL: try fixtureURL("spaces-3"),
+                                   activeSpaceReader: FakeActiveSpaceReader(id: nil))
+        XCTAssertEqual(monitor.spaces.map { $0.id }, ["1", "2", "3"])
+        XCTAssertNil(monitor.activeID)
+        XCTAssertNil(monitor.lastLoadError)
+    }
+
     func test_recoveryReload_clearsErrorAndPublishesSpaces() throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("SpaceMonitorTests-recovery-\(UUID().uuidString).plist")

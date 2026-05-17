@@ -52,7 +52,7 @@ import os
             let data = try Data(contentsOf: plistURL)
             let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any] ?? [:]
             let parsed = try SpacesPlistParser.parse(plist)
-            self.spaces = parsed.spaces
+            self.spaces = parsed.spaces   // parsed.activeID intentionally ignored — activeID comes from the SkyLight reader (plist Current Space is not kept live)
             self.lastLoadError = nil
         } catch {
             let description = String(describing: error)

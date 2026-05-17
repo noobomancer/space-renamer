@@ -32,8 +32,12 @@ public final class SkyLightActiveSpaceReader: ActiveSpaceReading {
 
     public func currentActiveSpaceID() -> String? {
         guard let mainConn, let copyDisplaySpaces else { return nil }
-        guard let displays = copyDisplaySpaces(mainConn())?.takeRetainedValue() as? [[String: Any]],
-              let primary = displays.first,
+        guard let unmanaged = copyDisplaySpaces(mainConn()) else { return nil }
+        // CGSCopy… returns a +1 retain; takeRetainedValue() hands it to ARC,
+        // which releases it on scope exit regardless of the cast outcome below.
+        let displays = unmanaged.takeRetainedValue()
+        guard let array = displays as? [[String: Any]],
+              let primary = array.first,
               let current = primary["Current Space"] as? [String: Any],
               let msid = current["ManagedSpaceID"] as? Int else {
             return nil
