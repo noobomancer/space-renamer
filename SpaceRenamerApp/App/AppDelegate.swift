@@ -2,7 +2,6 @@ import Cocoa
 import Combine
 import SpaceRenamerCore
 
-@main
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var names: NameStore!
@@ -14,9 +13,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var spaceIDsObserver: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Named UserDefaults suite so app data is separate from .standard (D9).
-        let defaults = UserDefaults(suiteName: "com.saint.SpaceRenamer") ?? .standard
-        names = NameStore(defaults: defaults)
+        // The app persists to its own standard UserDefaults domain (keyed by the
+        // bundle id). D9: tests use isolated suites; the app must NOT pass its own
+        // bundle id as a `suiteName` — UserDefaults rejects that as nonsensical.
+        names = NameStore()
         monitor = SpaceMonitor()
         switcher = SwitcherEngine(lookup: monitor)   // AppDelegate retains `monitor` (SwitcherEngine holds it weakly)
 
