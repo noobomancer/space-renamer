@@ -1,0 +1,90 @@
+import AppKit
+import Combine
+import KeyboardShortcuts
+import SpaceRenamerCore
+
+@MainActor
+final class PreferencesWindowController: NSWindowController, NSTableViewDataSource, NSTableViewDelegate {
+    private let monitor: SpaceMonitor
+    private let names: NameStore
+    private let table = NSTableView()
+    private let openMenuRecorder = KeyboardShortcuts.RecorderCocoa(for: .openMenu)
+    private var cancellables: Set<AnyCancellable> = []
+
+    init(monitor: SpaceMonitor, names: NameStore) {
+        self.monitor = monitor
+        self.names = names
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 440),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered, defer: false)
+        window.title = "Space Renamer Preferences"
+        super.init(window: window)
+        setupContent()
+        monitor.$spaces
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.table.reloadData() }
+            .store(in: &cancellables)
+    }
+
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    private func setupContent() {
+        guard let contentView = window?.contentView else { return }
+
+        let openMenuLabel = NSTextField(labelWithString: "Open-menu hotkey:")
+        let launchToggle = NSButton(checkboxWithTitle: "Launch at Login",
+                                    target: self, action: #selector(toggleLaunchAtLogin(_:)))
+        launchToggle.state = LaunchAtLogin.isEnabled ? .on : .off
+
+        let nameCol = NSTableColumn(identifier: .init("name"))
+        nameCol.title = "Desktop"; nameCol.width = 210
+        let hotkeyCol = NSTableColumn(identifier: .init("hotkey"))
+        hotkeyCol.title = "Hotkey"; hotkeyCol.width = 230
+        table.addTableColumn(nameCol)
+        table.addTableColumn(hotkeyCol)
+        table.dataSource = self
+        table.delegate = self
+        table.headerView = NSTableHeaderView()
+        table.rowHeight = 30
+
+        let scroll = NSScrollView()
+        scroll.documentView = table
+        scroll.hasVerticalScroller = true
+        scroll.borderType = .bezelBorder
+
+        let stack = NSStackView(views: [openMenuLabel, openMenuRecorder, scroll, launchToggle])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 10
+        stack.edgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: contentView.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            scroll.heightAnchor.constraint(greaterThanOrEqualToConstant: 280),
+            scroll.widthAnchor.constraint(equalToConstant: 440)
+        ])
+    }
+
+    @objc private func toggleLaunchAtLogin(_ sender: NSButton) {
+        LaunchAtLogin.isEnabled = (sender.state == .on)
+    }
+
+    func numberOfRows(in tableView: NSTableView) -> Int { monitor.spaces.count }
+
+    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        let space = monitor.spaces[row]
+        switch tableColumn?.identifier.rawValue {
+        case "name":
+            return NSTextField(labelWithString: names.name(for: space.id, defaultOrdinal: space.ordinal))
+        case "hotkey":
+            return KeyboardShortcuts.RecorderCocoa(for: .space(space.id))
+        default:
+            return nil
+        }
+    }
+}

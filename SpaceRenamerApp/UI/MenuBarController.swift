@@ -104,7 +104,22 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func renameClicked(_ sender: NSMenuItem) {
-        // Implemented in Task B3.
+        guard let id = sender.representedObject as? String,
+              let space = monitor.spaces.first(where: { $0.id == id }) else { return }
+        let alert = NSAlert()
+        alert.messageText = "Rename Desktop"
+        alert.informativeText = "Enter a new name. Leave blank to revert to \u{201C}Desktop \(space.ordinal)\u{201D}."
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        field.stringValue = names.name(for: id, defaultOrdinal: space.ordinal)
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn {
+            names.setName(id, field.stringValue)
+            rebuild()   // NameStore changes don't publish; rebuild explicitly.
+        }
     }
 
     @objc private func prefsClicked() { openPreferences() }

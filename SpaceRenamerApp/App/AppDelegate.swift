@@ -9,6 +9,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var monitor: SpaceMonitor!
     private var switcher: SwitcherEngine!
     private var menuBar: MenuBarController!
+    private var hotkeys: HotkeyManager!
+    private var prefs: PreferencesWindowController?
+    private var spaceIDsObserver: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Named UserDefaults suite so app data is separate from .standard (D9).
@@ -24,13 +27,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openPreferences: { [weak self] in self?.showPreferences() }
         )
 
+        hotkeys = HotkeyManager()
+        hotkeys.onSpaceHotkey = { [weak self] id in
+            do { try self?.switcher.switch(to: id) }
+            catch { NSLog("Space Renamer: hotkey switch failed: \(error)") }
+        }
+        hotkeys.onOpenMenu = { [weak self] in self?.menuBar.openMenu() }
+        spaceIDsObserver = monitor.$spaces
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] spaces in self?.hotkeys.sync(knownIDs: spaces.map { $0.id }) }
+
         warnIfMissionControlShortcutsDisabled()
     }
 
     func applicationWillTerminate(_ notification: Notification) {}
 
     private func showPreferences() {
-        // Implemented in Task B3.
+        if prefs == nil { prefs = PreferencesWindowController(monitor: monitor, names: names) }
+        prefs?.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func warnIfMissionControlShortcutsDisabled() {
