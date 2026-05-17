@@ -36,6 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func warnIfMissionControlShortcutsDisabled() {
         guard !names.didWarnAboutSystemShortcuts else { return }
         guard !SystemShortcutChecker.switchToDesktopShortcutsEnabled() else { return }
+        // Set before showing the modal on purpose: a one-shot warning — we do not
+        // want to re-prompt every launch if the user force-quits during the alert.
         names.didWarnAboutSystemShortcuts = true
 
         let alert = NSAlert()

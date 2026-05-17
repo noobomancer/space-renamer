@@ -30,11 +30,17 @@ final class MenuBarController: NSObject {
         rebuild()
     }
 
-    /// Programmatically drop the menu (used by the open-menu hotkey).
+    /// Programmatically toggle the status-item menu (used by the global open-menu hotkey
+    /// in Task B3). `performClick` TOGGLES: if the menu is already open this closes it —
+    /// callers must NOT add extra open/closed state tracking around this.
     func openMenu() {
         statusItem.button?.performClick(nil)
     }
 
+    // Known limitation (tracked Phase B polish): if a Space change fires while the
+    // menu is open, reassigning `statusItem.menu` does not refresh the already-open
+    // menu and the bar title may briefly flicker; the correct fix is to rebuild on
+    // menu close. Acceptable for v0.1.
     private func rebuild() {
         let menu = NSMenu()
 
