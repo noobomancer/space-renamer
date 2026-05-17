@@ -1,5 +1,6 @@
 import Cocoa
 import Combine
+import ApplicationServices
 import SpaceRenamerCore
 
 @MainActor
@@ -37,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] spaces in self?.hotkeys.sync(knownIDs: spaces.map { $0.id }) }
 
+        promptForAccessibilityIfNeeded()
         warnIfMissionControlShortcutsDisabled()
     }
 
@@ -46,6 +48,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if prefs == nil { prefs = PreferencesWindowController(monitor: monitor, names: names) }
         prefs?.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func promptForAccessibilityIfNeeded() {
+        // Switching desktops posts a synthesized Ctrl+digit CGEvent, which macOS
+        // only delivers if this process is Accessibility-trusted; otherwise the
+        // events are silently dropped. AXIsProcessTrustedWithOptions with the
+        // prompt option triggers the system prompt when not yet trusted.
+        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
+        if AXIsProcessTrustedWithOptions(options) { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Grant Accessibility access"
+        alert.informativeText = "Space Renamer switches desktops by sending the macOS \u{201C}Switch to Desktop\u{201D} keyboard shortcut, which requires Accessibility permission. Enable \u{201C}SpaceRenamer\u{201D} under System Settings \u{2192} Privacy & Security \u{2192} Accessibility, then clicking a desktop will switch. (Ad-hoc development builds may need re-granting after a rebuild.)"
+        alert.addButton(withTitle: "Open Accessibility Settings")
+        alert.addButton(withTitle: "Later")
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn,
+           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func warnIfMissionControlShortcutsDisabled() {
