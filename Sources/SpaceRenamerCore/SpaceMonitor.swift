@@ -16,13 +16,15 @@ import os
     private static let logger = Logger(subsystem: "SpaceRenamerCore", category: "SpaceMonitor")
 
     private let plistURL: URL
+    private let activeReader: ActiveSpaceReading
     private var observer: NSObjectProtocol?
 
-    public init(plistURL: URL? = nil) {
+    public init(plistURL: URL? = nil, activeSpaceReader: ActiveSpaceReading = SkyLightActiveSpaceReader()) {
         self.plistURL = plistURL
             ?? FileManager.default
                 .homeDirectoryForCurrentUser
                 .appendingPathComponent("Library/Preferences/com.apple.spaces.plist")
+        self.activeReader = activeSpaceReader
         reload()
         observer = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification,
@@ -39,16 +41,18 @@ import os
         if let observer { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
     }
 
-    /// Re-read the plist and republish. On failure `lastLoadError` is set and
-    /// the previously published `spaces`/`activeID` are left unchanged (stale).
+    /// Refresh the active Space (from the SkyLight reader) and re-read the
+    /// plist for the Space list/order. On a plist failure `lastLoadError` is
+    /// set and `spaces` is left stale; `activeID` still refreshes (it does not
+    /// depend on the plist — macOS doesn't keep the plist's Current Space live).
     public func reload() {
+        self.activeID = activeReader.currentActiveSpaceID()
         CFPreferencesAppSynchronize("com.apple.spaces" as CFString)
         do {
             let data = try Data(contentsOf: plistURL)
             let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any] ?? [:]
             let parsed = try SpacesPlistParser.parse(plist)
             self.spaces = parsed.spaces
-            self.activeID = parsed.activeID
             self.lastLoadError = nil
         } catch {
             let description = String(describing: error)
