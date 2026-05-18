@@ -21,6 +21,9 @@ final class PreferencesWindowController: NSWindowController, NSTableViewDataSour
         window.title = "Space Renamer Preferences"
         super.init(window: window)
         setupContent()
+        // Created at origin (0,0) — Cocoa's bottom-left. Center it on first
+        // show; NSWindowController then remembers a user-moved position.
+        window.center()
         monitor.$spaces
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.table.reloadData() }
