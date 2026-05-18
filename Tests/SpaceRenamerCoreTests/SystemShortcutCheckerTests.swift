@@ -75,8 +75,22 @@ final class SystemShortcutCheckerTests: XCTestCase {
     }
 
     func test_reachable_wrongKeyCode_excluded() {
-        // enabled + Control but bound to a non-digit key
+        // id 122 = Desktop 5; digitVirtualKeyCodes[4] is 23, so key 99 ≠ expected.
         let raw: [String: Any] = ["122": entry(enabled: true, key: 99, mod: 262144)]
         XCTAssertEqual(SystemShortcutChecker.reachableSwitchToDesktopOrdinals(in: raw), [])
+    }
+
+    func test_reachable_mixed_returnsOnlyTheReachableOnes() {
+        // Realistic shape: user enabled only some "Switch to Desktop" shortcuts.
+        // 118 ok (D1), 119 disabled (D2), 120 wrong modifier (D3),
+        // 121 ok (D4), 122 wrong key (D5), 123..126 absent.
+        let raw: [String: Any] = [
+            "118": entry(enabled: true,  key: 18, mod: 262144),
+            "119": entry(enabled: false, key: 19, mod: 262144),
+            "120": entry(enabled: true,  key: 20, mod: 262144 + 131072),
+            "121": entry(enabled: true,  key: 21, mod: 262144),
+            "122": entry(enabled: true,  key: 99, mod: 262144),
+        ]
+        XCTAssertEqual(SystemShortcutChecker.reachableSwitchToDesktopOrdinals(in: raw), [1, 4])
     }
 }
