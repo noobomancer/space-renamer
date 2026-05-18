@@ -41,18 +41,24 @@ import os
         if let observer { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
     }
 
-    /// Refresh the active Space (from the SkyLight reader) and re-read the
-    /// plist for the Space list/order. On a plist failure `lastLoadError` is
-    /// set and `spaces` is left stale; `activeID` still refreshes (it does not
-    /// depend on the plist — macOS doesn't keep the plist's Current Space live).
+    /// Refresh from the live SkyLight snapshot (ordered Spaces + active id).
+    /// Falls back to the (lazily-written) plist only if SkyLight is
+    /// unavailable, in which case `lastLoadError` reflects the plist read.
     public func reload() {
-        self.activeID = activeReader.currentActiveSpaceID()
+        if let snap = activeReader.snapshot() {
+            self.spaces = snap.spaces
+            self.activeID = snap.activeID
+            self.lastLoadError = nil
+            return
+        }
+        // Degraded fallback: SkyLight unavailable — read the plist.
         CFPreferencesAppSynchronize("com.apple.spaces" as CFString)
         do {
             let data = try Data(contentsOf: plistURL)
             let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any] ?? [:]
             let parsed = try SpacesPlistParser.parse(plist)
-            self.spaces = parsed.spaces   // parsed.activeID intentionally ignored — activeID comes from the SkyLight reader (plist Current Space is not kept live)
+            self.spaces = parsed.spaces
+            self.activeID = parsed.activeID
             self.lastLoadError = nil
         } catch {
             let description = String(describing: error)

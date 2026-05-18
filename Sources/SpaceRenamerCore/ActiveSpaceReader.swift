@@ -1,11 +1,12 @@
 import Foundation
 
-/// Reads the currently-active Space's identity (`ManagedSpaceID` as a decimal
-/// string), or `nil` if it cannot be determined. macOS does not keep
-/// `com.apple.spaces.plist`'s `Current Space` live (see design D2 / Revision
-/// 2026-05-17), so the live source is the read-only private SkyLight SPI.
+/// Reads a live snapshot of the ordered Spaces + the active Space id from the
+/// window server. macOS does not keep `com.apple.spaces.plist`'s `Current
+/// Space`/`Spaces` live (see design D2 / Revisions 2026-05-17), so the source
+/// is the read-only private SkyLight SPI.
 public protocol ActiveSpaceReading {
-    func currentActiveSpaceID() -> String?
+    /// Live ordered Spaces + active id, or `nil` if unavailable.
+    func snapshot() -> ParsedSpaces?
 }
 
 /// Read-only private SkyLight implementation. Resolves the SPI via `dlsym`
@@ -30,18 +31,20 @@ public final class SkyLightActiveSpaceReader: ActiveSpaceReading {
         self.copyDisplaySpaces = unsafeBitCast(cds, to: CopyDisplaySpacesFn.self)
     }
 
-    public func currentActiveSpaceID() -> String? {
+    public func snapshot() -> ParsedSpaces? {
         guard let mainConn, let copyDisplaySpaces else { return nil }
         guard let unmanaged = copyDisplaySpaces(mainConn()) else { return nil }
         // CGSCopy… returns a +1 retain; takeRetainedValue() hands it to ARC,
-        // which releases it on scope exit regardless of the cast outcome below.
+        // which releases it on scope exit regardless of the casts below.
         let displays = unmanaged.takeRetainedValue()
-        guard let array = displays as? [[String: Any]],
-              let primary = array.first,
-              let current = primary["Current Space"] as? [String: Any],
-              let msid = current["ManagedSpaceID"] as? Int else {
-            return nil
+        guard let array = displays as? [[String: Any]], let primary = array.first else { return nil }
+        let rawSpaces = (primary["Spaces"] as? [[String: Any]]) ?? []
+        let spaces: [ParsedSpace] = rawSpaces.enumerated().compactMap { idx, dict in
+            guard let msid = dict["ManagedSpaceID"] as? Int, msid > 0 else { return nil }
+            return ParsedSpace(id: String(msid), ordinal: idx + 1)
         }
-        return String(msid)
+        guard !spaces.isEmpty else { return nil }
+        let activeMSID = (primary["Current Space"] as? [String: Any])?["ManagedSpaceID"] as? Int
+        return ParsedSpaces(spaces: spaces, activeID: activeMSID.map(String.init))
     }
 }

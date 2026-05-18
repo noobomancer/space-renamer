@@ -3,13 +3,14 @@ import Combine
 import SpaceRenamerCore
 
 @MainActor
-final class MenuBarController: NSObject {
+final class MenuBarController: NSObject, NSMenuDelegate {
     private let statusItem: NSStatusItem
     private let monitor: SpaceMonitor
     private let names: NameStore
     private let switcher: SwitcherEngine
     private let openPreferences: () -> Void
     private var cancellables: Set<AnyCancellable> = []
+    private let menu = NSMenu()
 
     init(monitor: SpaceMonitor,
          names: NameStore,
@@ -22,12 +23,14 @@ final class MenuBarController: NSObject {
         self.openPreferences = openPreferences
         super.init()
         statusItem.button?.title = "Desktop"
+        menu.delegate = self
+        statusItem.menu = menu
 
         Publishers.CombineLatest3(monitor.$spaces, monitor.$activeID, monitor.$lastLoadError)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _, _, _ in self?.rebuild() }
+            .sink { [weak self] _, _, _ in self?.refreshTitle() }
             .store(in: &cancellables)
-        rebuild()
+        refreshTitle()
     }
 
     /// Programmatically toggle the status-item menu (used by the global open-menu hotkey
@@ -37,12 +40,18 @@ final class MenuBarController: NSObject {
         statusItem.button?.performClick(nil)
     }
 
-    // Known limitation (tracked Phase B polish): if a Space change fires while the
-    // menu is open, reassigning `statusItem.menu` does not refresh the already-open
-    // menu and the bar title may briefly flicker; the correct fix is to rebuild on
-    // menu close. Acceptable for v0.1.
-    private func rebuild() {
-        let menu = NSMenu()
+    // MARK: - NSMenuDelegate
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        monitor.reload()
+        populate()
+        refreshTitle()
+    }
+
+    // MARK: - Private helpers
+
+    private func populate() {
+        menu.removeAllItems()
 
         for space in monitor.spaces {
             let title = names.name(for: space.id, defaultOrdinal: space.ordinal)
@@ -67,6 +76,12 @@ final class MenuBarController: NSObject {
             menu.addItem(renameAlt)
         }
 
+        if !monitor.spaces.isEmpty {
+            let hint = NSMenuItem(title: "Hold \u{2325} and click a desktop to rename", action: nil, keyEquivalent: "")
+            hint.isEnabled = false
+            menu.addItem(hint)
+        }
+
         if monitor.lastLoadError != nil {
             menu.addItem(.separator())
             let warn = NSMenuItem(title: "⚠︎ Spaces unavailable — showing last known", action: nil, keyEquivalent: "")
@@ -81,14 +96,14 @@ final class MenuBarController: NSObject {
         let quit = NSMenuItem(title: "Quit Space Renamer", action: #selector(quitClicked), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
+    }
 
-        statusItem.menu = menu
-
+    private func refreshTitle() {
         if let activeID = monitor.activeID,
            let active = monitor.spaces.first(where: { $0.id == activeID }) {
             statusItem.button?.title = names.name(for: active.id, defaultOrdinal: active.ordinal)
         } else if monitor.lastLoadError != nil {
-            statusItem.button?.title = "⚠︎ Desktop"
+            statusItem.button?.title = "\u{26A0}\u{FE0E} Desktop"
         } else {
             statusItem.button?.title = "Desktop"
         }
@@ -118,7 +133,8 @@ final class MenuBarController: NSObject {
         NSApp.activate(ignoringOtherApps: true)
         if alert.runModal() == .alertFirstButtonReturn {
             names.setName(id, field.stringValue)
-            rebuild()   // NameStore changes don't publish; rebuild explicitly.
+            populate()   // NameStore changes don't publish; repopulate explicitly.
+            refreshTitle()
         }
     }
 
