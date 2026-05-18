@@ -8,12 +8,15 @@ extension SpaceMonitor: OrdinalLookup {}
 
 public enum SwitcherError: Error, Equatable {
     case unknownSpace
-    case ordinalOutOfRange
+    /// The switch could not be attempted (live ordinals unavailable / event
+    /// source unavailable). Replaces the old `ordinalOutOfRange` — switching is
+    /// no longer ordinal-capped; see *Design Revision 2026-05-17c*.
+    case switchUnavailable
     case lookupUnavailable
 }
 
 @MainActor public final class SwitcherEngine {
-    private let synthesizer: KeystrokeSynthesizing
+    private let spaceSwitcher: SpaceSwitching
     private weak var lookup: OrdinalLookup?
 
     /// - Important: the engine holds `lookup` **weakly** to avoid a retain cycle
@@ -22,16 +25,21 @@ public enum SwitcherError: Error, Equatable {
     ///   `switch(to:)` throws ``SwitcherError/lookupUnavailable`` (distinct from
     ///   ``SwitcherError/unknownSpace``, which means the lookup is alive but does
     ///   not know that Space ID).
-    public init(synthesizer: KeystrokeSynthesizing = CGKeystrokeSynthesizer(),
+    public init(spaceSwitcher: SpaceSwitching = RelativeArrowSpaceSwitcher(),
                 lookup: OrdinalLookup) {
-        self.synthesizer = synthesizer
+        self.spaceSwitcher = spaceSwitcher
         self.lookup = lookup
     }
 
+    /// Switches to the Space `id` (a `ManagedSpaceID`) via relative Ctrl+arrow
+    /// navigation — uncapped (no 9-desktop limit). The `lookup` check validates
+    /// the id is a known Space and preserves the weak-retention contract; the
+    /// switcher itself derives the ordinal delta from a fresh SkyLight snapshot.
     public func `switch`(to id: String) throws {
         guard let lookup else { throw SwitcherError.lookupUnavailable }
-        guard let ordinal = lookup.ordinal(for: id) else { throw SwitcherError.unknownSpace }
-        guard (1...ParsedSpace.maxShortcutOrdinal).contains(ordinal) else { throw SwitcherError.ordinalOutOfRange }
-        try synthesizer.postControlDigit(ordinal)
+        guard lookup.ordinal(for: id) != nil else { throw SwitcherError.unknownSpace }
+
+        if spaceSwitcher.setCurrentSpace(managedSpaceID: id) { return }
+        throw SwitcherError.switchUnavailable
     }
 }
