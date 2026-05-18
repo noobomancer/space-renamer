@@ -23,6 +23,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         self.openPreferences = openPreferences
         super.init()
         statusItem.button?.title = "Desktop"
+        if let icon = NSImage(systemSymbolName: "display", accessibilityDescription: "Desktop") {
+            icon.isTemplate = true                       // adapts to light/dark menu bar + highlight
+            statusItem.button?.image = icon
+            statusItem.button?.imagePosition = .imageLeading
+            statusItem.button?.imageHugsTitle = true     // keep icon next to the name
+        }
         menu.delegate = self
         // NSMenu.autoenablesItems defaults to true, which makes AppKit ignore
         // our manual `item.isEnabled = false` and re-enable any item whose
