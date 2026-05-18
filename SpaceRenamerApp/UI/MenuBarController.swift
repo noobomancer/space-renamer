@@ -66,14 +66,25 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private func populate() {
         menu.removeAllItems()
 
+        // Arrow mode reaches any desktop; Ctrl+digit mode only the desktops
+        // whose Ctrl+N is enabled & correctly bound (so grey the rest, incl.
+        // all >9). See Design Revision 2026-05-18.
+        let ctrlDigitMode = names.switchMode == .ctrlDigit
+        let reachable: Set<Int> = ctrlDigitMode
+            ? SystemShortcutChecker.reachableSwitchToDesktopOrdinals() : []
+
         for space in monitor.spaces {
             let title = names.name(for: space.id, defaultOrdinal: space.ordinal)
             let item = NSMenuItem(title: title, action: #selector(spaceClicked(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = space.id
             if space.id == monitor.activeID { item.state = .on }
-            // Every real desktop is switchable via the SkyLight write SPI
-            // (Design Revision 2026-05-17c) — no >9 / Ctrl+digit gating here.
+            if ctrlDigitMode && !reachable.contains(space.ordinal) {
+                item.isEnabled = false
+                item.toolTip = space.ordinal > 9
+                    ? "Ctrl+1\u{2013}9 can\u{2019}t reach desktop \(space.ordinal). Switch to \u{201C}Move a space\u{201D} mode in Preferences."
+                    : "Enable \u{201C}Switch to Desktop \(space.ordinal)\u{201D} (Ctrl+\(space.ordinal)) in System Settings \u{2192} Keyboard \u{2192} Keyboard Shortcuts \u{2192} Mission Control, or use \u{201C}Move a space\u{201D} mode."
+            }
             menu.addItem(item)
 
             // ⌥-held alternate row → rename (implemented in Task B3).

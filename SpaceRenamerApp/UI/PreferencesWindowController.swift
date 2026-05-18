@@ -15,7 +15,7 @@ final class PreferencesWindowController: NSWindowController, NSTableViewDataSour
         self.monitor = monitor
         self.names = names
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 440),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 470),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered, defer: false)
         window.title = "Space Renamer Preferences"
@@ -40,6 +40,10 @@ final class PreferencesWindowController: NSWindowController, NSTableViewDataSour
                                     target: self, action: #selector(toggleLaunchAtLogin(_:)))
         launchToggle.state = LaunchAtLogin.isEnabled ? .on : .off
 
+        let shortcutToggle = NSButton(checkboxWithTitle: "Use shortcut mode (9 desktops max)",
+                                      target: self, action: #selector(toggleShortcutMode(_:)))
+        shortcutToggle.state = (names.switchMode == .ctrlDigit) ? .on : .off
+
         let nameCol = NSTableColumn(identifier: .init("name"))
         nameCol.title = "Desktop"; nameCol.width = 210
         let hotkeyCol = NSTableColumn(identifier: .init("hotkey"))
@@ -56,7 +60,8 @@ final class PreferencesWindowController: NSWindowController, NSTableViewDataSour
         scroll.hasVerticalScroller = true
         scroll.borderType = .bezelBorder
 
-        let stack = NSStackView(views: [openMenuLabel, openMenuRecorder, scroll, launchToggle])
+        let stack = NSStackView(views: [openMenuLabel, openMenuRecorder, scroll,
+                                        shortcutToggle, launchToggle])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 10
@@ -75,6 +80,13 @@ final class PreferencesWindowController: NSWindowController, NSTableViewDataSour
 
     @objc private func toggleLaunchAtLogin(_ sender: NSButton) {
         LaunchAtLogin.isEnabled = (sender.state == .on)
+    }
+
+    @objc private func toggleShortcutMode(_ sender: NSButton) {
+        // Checked = Ctrl+1–9 "shortcut mode" (max 9 desktops); unchecked =
+        // default arrow mode (any desktop). The status menu rebuilds on open
+        // (NSMenuDelegate), so the Ctrl+digit greying reflects this next show.
+        names.switchMode = (sender.state == .on) ? .ctrlDigit : .arrow
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int { monitor.spaces.count }

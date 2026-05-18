@@ -19,7 +19,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // bundle id as a `suiteName` — UserDefaults rejects that as nonsensical.
         names = NameStore()
         monitor = SpaceMonitor()
-        switcher = SwitcherEngine(lookup: monitor)   // AppDelegate retains `monitor` (SwitcherEngine holds it weakly)
+        // Routing switcher reads the user's SwitchMode per call, so the
+        // Preferences toggle takes effect on the next switch (no relaunch).
+        switcher = SwitcherEngine(
+            spaceSwitcher: ModeRoutingSpaceSwitcher(mode: { [weak names] in names?.switchMode ?? .default }),
+            lookup: monitor)   // AppDelegate retains `monitor` (SwitcherEngine holds it weakly)
 
         menuBar = MenuBarController(
             monitor: monitor,
@@ -39,7 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] spaces in self?.hotkeys.sync(knownIDs: spaces.map { $0.id }) }
 
         promptForAccessibilityIfNeeded()
-        warnIfSpaceMoveShortcutsDisabled()
+        warnIfSwitchShortcutsDisabled()
     }
 
     func applicationWillTerminate(_ notification: Notification) {}
@@ -70,16 +74,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func warnIfSpaceMoveShortcutsDisabled() {
+    private func warnIfSwitchShortcutsDisabled() {
         guard !names.didWarnAboutSystemShortcuts else { return }
-        guard !SystemShortcutChecker.spaceMoveShortcutsEnabled() else { return }
+        let mode = names.switchMode
+        let enabled: Bool
+        switch mode {
+        case .arrow:     enabled = SystemShortcutChecker.spaceMoveShortcutsEnabled()
+        case .ctrlDigit: enabled = SystemShortcutChecker.switchToDesktopShortcutsEnabled()
+        }
+        guard !enabled else { return }
         // Set before showing the modal on purpose: a one-shot warning — we do not
         // want to re-prompt every launch if the user force-quits during the alert.
         names.didWarnAboutSystemShortcuts = true
 
         let alert = NSAlert()
         alert.messageText = "Enable Mission Control shortcuts"
-        alert.informativeText = "Space Renamer switches desktops using the \u{201C}Move left a space\u{201D} and \u{201C}Move right a space\u{201D} keyboard shortcuts (Ctrl+\u{2190} / Ctrl+\u{2192}). Enable both in System Settings \u{2192} Keyboard \u{2192} Keyboard Shortcuts \u{2192} Mission Control, or clicking a desktop won\u{2019}t switch."
+        switch mode {
+        case .arrow:
+            alert.informativeText = "Space Renamer switches desktops using the \u{201C}Move left a space\u{201D} and \u{201C}Move right a space\u{201D} keyboard shortcuts (Ctrl+\u{2190} / Ctrl+\u{2192}). Enable both in System Settings \u{2192} Keyboard \u{2192} Keyboard Shortcuts \u{2192} Mission Control, or clicking a desktop won\u{2019}t switch. (Or pick \u{201C}Switch to Desktop N\u{201D} mode in Preferences.)"
+        case .ctrlDigit:
+            alert.informativeText = "Space Renamer is set to switch via the \u{201C}Switch to Desktop N\u{201D} shortcuts (Ctrl+1\u{2013}9). Enable them in System Settings \u{2192} Keyboard \u{2192} Keyboard Shortcuts \u{2192} Mission Control, or clicking a desktop won\u{2019}t switch. (Or pick \u{201C}Move a space\u{201D} mode in Preferences.)"
+        }
         alert.addButton(withTitle: "Open Keyboard Settings")
         alert.addButton(withTitle: "Later")
         if alert.runModal() == .alertFirstButtonReturn,

@@ -7,6 +7,7 @@ public final class NameStore {
     private enum Key {
         static let names = "SpaceRenamer.names"               // [SpaceID: String]
         static let warned = "SpaceRenamer.didWarnSystemShortcuts"
+        static let switchMode = "SpaceRenamer.switchMode"     // SwitchMode.rawValue
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -43,5 +44,11 @@ public final class NameStore {
     public var didWarnAboutSystemShortcuts: Bool {
         get { defaults.bool(forKey: Key.warned) }
         set { defaults.set(newValue, forKey: Key.warned) }
+    }
+
+    /// Desktop-switch delivery mechanism. Missing/invalid → `SwitchMode.default`.
+    public var switchMode: SwitchMode {
+        get { defaults.string(forKey: Key.switchMode).flatMap(SwitchMode.init(rawValue:)) ?? .default }
+        set { defaults.set(newValue.rawValue, forKey: Key.switchMode) }
     }
 }

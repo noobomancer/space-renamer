@@ -56,4 +56,20 @@ import XCTest
         let reborn = NameStore(defaults: defaults)
         XCTAssertTrue(reborn.didWarnAboutSystemShortcuts)
     }
+
+    func test_switchMode_defaultsToArrow() {
+        XCTAssertEqual(store.switchMode, .arrow)
+        XCTAssertEqual(SwitchMode.default, .arrow)
+    }
+
+    func test_switchMode_roundTripsAcrossReconstruction() {
+        store.switchMode = .ctrlDigit
+        let reborn = NameStore(defaults: defaults)
+        XCTAssertEqual(reborn.switchMode, .ctrlDigit)
+    }
+
+    func test_switchMode_invalidStoredValue_fallsBackToDefault() {
+        defaults.set("bogus", forKey: "SpaceRenamer.switchMode")
+        XCTAssertEqual(NameStore(defaults: defaults).switchMode, .arrow)
+    }
 }

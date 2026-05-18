@@ -62,3 +62,54 @@ public final class RelativeArrowSpaceSwitcher: SpaceSwitching {
         return true
     }
 }
+
+/// `Ctrl+1…9` ("Switch to Desktop N") switcher — a single instant keystroke,
+/// but macOS only defines those hotkeys for desktops 1–9, so it returns
+/// `false` for any higher ordinal (the menu greys those rows in this mode).
+/// Selected via `SwitchMode.ctrlDigit` (see *Design Revision 2026-05-18*).
+public final class CtrlDigitSpaceSwitcher: SpaceSwitching {
+    private let reader: ActiveSpaceReading
+    private let synthesizer: KeystrokeSynthesizing
+
+    public init(reader: ActiveSpaceReading = SkyLightActiveSpaceReader(),
+                synthesizer: KeystrokeSynthesizing = CGKeystrokeSynthesizer()) {
+        self.reader = reader
+        self.synthesizer = synthesizer
+    }
+
+    public func setCurrentSpace(managedSpaceID: String) -> Bool {
+        guard let snap = reader.snapshot(),
+              let ordinal = snap.spaces.first(where: { $0.id == managedSpaceID })?.ordinal,
+              (1...9).contains(ordinal) else { return false }   // Ctrl+1…9 only
+        do {
+            try synthesizer.postControlDigit(ordinal)
+        } catch {
+            return false
+        }
+        return true
+    }
+}
+
+/// Routes each switch to the arrow or Ctrl+digit switcher based on the
+/// user-selected `SwitchMode`. The mode is read **per call**, so flipping the
+/// Preferences setting takes effect on the next switch — no relaunch.
+public final class ModeRoutingSpaceSwitcher: SpaceSwitching {
+    private let arrow: SpaceSwitching
+    private let ctrlDigit: SpaceSwitching
+    private let mode: () -> SwitchMode
+
+    public init(arrow: SpaceSwitching = RelativeArrowSpaceSwitcher(),
+                ctrlDigit: SpaceSwitching = CtrlDigitSpaceSwitcher(),
+                mode: @escaping () -> SwitchMode) {
+        self.arrow = arrow
+        self.ctrlDigit = ctrlDigit
+        self.mode = mode
+    }
+
+    public func setCurrentSpace(managedSpaceID: String) -> Bool {
+        switch mode() {
+        case .arrow:     return arrow.setCurrentSpace(managedSpaceID: managedSpaceID)
+        case .ctrlDigit: return ctrlDigit.setCurrentSpace(managedSpaceID: managedSpaceID)
+        }
+    }
+}
