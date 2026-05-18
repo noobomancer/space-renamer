@@ -41,4 +41,42 @@ final class SystemShortcutCheckerTests: XCTestCase {
         ]
         XCTAssertTrue(SystemShortcutChecker.anyEnabled(in: raw))
     }
+
+    // MARK: - reachableSwitchToDesktopOrdinals
+
+    private func entry(enabled: Bool, key: Int, mod: Int) -> [String: Any] {
+        ["enabled": enabled, "value": ["parameters": [65535, key, mod]]]
+    }
+
+    func test_reachable_nil_isEmpty() {
+        XCTAssertEqual(SystemShortcutChecker.reachableSwitchToDesktopOrdinals(in: nil), [])
+    }
+
+    func test_reachable_ctrlDigitEnabled_includesThoseOrdinals() {
+        // ids 118..121 = Desktops 1..4, Ctrl(=262144)+keyCodes 18,19,20,21
+        let raw: [String: Any] = [
+            "118": entry(enabled: true, key: 18, mod: 262144),
+            "119": entry(enabled: true, key: 19, mod: 262144),
+            "120": entry(enabled: true, key: 20, mod: 262144),
+            "121": entry(enabled: true, key: 21, mod: 262144),
+        ]
+        XCTAssertEqual(SystemShortcutChecker.reachableSwitchToDesktopOrdinals(in: raw), [1, 2, 3, 4])
+    }
+
+    func test_reachable_disabledEntry_excluded() {
+        let raw: [String: Any] = ["120": entry(enabled: false, key: 20, mod: 262144)]
+        XCTAssertEqual(SystemShortcutChecker.reachableSwitchToDesktopOrdinals(in: raw), [])
+    }
+
+    func test_reachable_wrongModifier_excluded() {
+        // enabled + correct key but modifier is not Control-only (e.g. Ctrl+Shift)
+        let raw: [String: Any] = ["120": entry(enabled: true, key: 20, mod: 262144 + 131072)]
+        XCTAssertEqual(SystemShortcutChecker.reachableSwitchToDesktopOrdinals(in: raw), [])
+    }
+
+    func test_reachable_wrongKeyCode_excluded() {
+        // enabled + Control but bound to a non-digit key
+        let raw: [String: Any] = ["122": entry(enabled: true, key: 99, mod: 262144)]
+        XCTAssertEqual(SystemShortcutChecker.reachableSwitchToDesktopOrdinals(in: raw), [])
+    }
 }

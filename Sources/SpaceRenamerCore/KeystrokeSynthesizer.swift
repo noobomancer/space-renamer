@@ -13,6 +13,12 @@ public enum KeystrokeError: Error {
 }
 
 public struct CGKeystrokeSynthesizer: KeystrokeSynthesizing {
+    /// US-layout virtual key codes for digits 1...9. Single source of truth for
+    /// the Ctrl+digit the app synthesizes; `SystemShortcutChecker` matches the
+    /// macOS "Switch to Desktop N" binding against this to know which desktops
+    /// are actually reachable.
+    public static let digitVirtualKeyCodes: [CGKeyCode] = [18, 19, 20, 21, 23, 22, 26, 28, 25]
+
     public init() {}
 
     public func postControlDigit(_ digit: Int) throws {
@@ -20,9 +26,7 @@ public struct CGKeystrokeSynthesizer: KeystrokeSynthesizing {
         guard let source = CGEventSource(stateID: .hidSystemState) else {
             throw KeystrokeError.eventSourceUnavailable
         }
-        // US-layout virtual key codes for digits 1..9: 18, 19, 20, 21, 23, 22, 26, 28, 25.
-        let keyMap: [CGKeyCode] = [18, 19, 20, 21, 23, 22, 26, 28, 25]
-        let keyCode = keyMap[digit - 1]
+        let keyCode = Self.digitVirtualKeyCodes[digit - 1]
 
         // Post at the HID tap so the synthesized chord is processed like a real
         // keypress and reaches the WindowServer "Switch to Desktop N" symbolic-

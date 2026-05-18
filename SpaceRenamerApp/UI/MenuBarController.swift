@@ -55,6 +55,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private func populate() {
         menu.removeAllItems()
 
+        let reachable = SystemShortcutChecker.reachableSwitchToDesktopOrdinals()
+
         for space in monitor.spaces {
             let title = names.name(for: space.id, defaultOrdinal: space.ordinal)
             let item = NSMenuItem(title: title, action: #selector(spaceClicked(_:)), keyEquivalent: "")
@@ -63,7 +65,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             if space.id == monitor.activeID { item.state = .on }
             if !space.isShortcutAvailable {
                 item.isEnabled = false
-                item.toolTip = "No Ctrl+digit shortcut (more than \(ParsedSpace.maxShortcutOrdinal) Spaces)"
+                item.toolTip = "No Ctrl+digit shortcut: more than \(ParsedSpace.maxShortcutOrdinal) Spaces."
+            } else if !reachable.contains(space.ordinal) {
+                item.isEnabled = false
+                item.toolTip = "Can\u{2019}t switch here: enable \u{201C}Switch to Desktop \(space.ordinal)\u{201D} (Ctrl+\(space.ordinal)) in System Settings \u{203A} Keyboard \u{203A} Keyboard Shortcuts \u{203A} Mission Control."
             }
             menu.addItem(item)
 
