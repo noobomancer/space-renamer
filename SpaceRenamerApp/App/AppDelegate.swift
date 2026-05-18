@@ -39,7 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] spaces in self?.hotkeys.sync(knownIDs: spaces.map { $0.id }) }
 
         promptForAccessibilityIfNeeded()
-        warnIfMissionControlShortcutsDisabled()
+        warnIfSpaceMoveShortcutsDisabled()
     }
 
     func applicationWillTerminate(_ notification: Notification) {}
@@ -70,16 +70,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func warnIfMissionControlShortcutsDisabled() {
+    private func warnIfSpaceMoveShortcutsDisabled() {
         guard !names.didWarnAboutSystemShortcuts else { return }
-        guard !SystemShortcutChecker.switchToDesktopShortcutsEnabled() else { return }
+        guard !SystemShortcutChecker.spaceMoveShortcutsEnabled() else { return }
         // Set before showing the modal on purpose: a one-shot warning — we do not
         // want to re-prompt every launch if the user force-quits during the alert.
         names.didWarnAboutSystemShortcuts = true
 
         let alert = NSAlert()
         alert.messageText = "Enable Mission Control shortcuts"
-        alert.informativeText = "Space Renamer switches desktops using the \u{201C}Switch to Desktop N\u{201D} keyboard shortcuts. Enable them in System Settings \u{2192} Keyboard \u{2192} Keyboard Shortcuts \u{2192} Mission Control, or clicking a desktop won\u{2019}t switch."
+        alert.informativeText = "Space Renamer switches desktops using the \u{201C}Move left a space\u{201D} and \u{201C}Move right a space\u{201D} keyboard shortcuts (Ctrl+\u{2190} / Ctrl+\u{2192}). Enable both in System Settings \u{2192} Keyboard \u{2192} Keyboard Shortcuts \u{2192} Mission Control, or clicking a desktop won\u{2019}t switch."
         alert.addButton(withTitle: "Open Keyboard Settings")
         alert.addButton(withTitle: "Later")
         if alert.runModal() == .alertFirstButtonReturn,

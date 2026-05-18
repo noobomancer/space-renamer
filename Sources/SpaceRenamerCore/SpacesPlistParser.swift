@@ -13,19 +13,6 @@ public struct ParsedSpace: Equatable {
     }
 }
 
-public extension ParsedSpace {
-    /// Highest 1-based ordinal reachable via the macOS "Switch to Desktop N"
-    /// shortcut (Ctrl+1…Ctrl+9). Since *Design Revision 2026-05-17c* switching
-    /// is uncapped (relative `Ctrl+arrow` navigation), so this and
-    /// `isShortcutAvailable` are **no longer used by switching** — retained,
-    /// still unit-tested (e.g. `SystemShortcutChecker`), harmless.
-    static let maxShortcutOrdinal: Int = 9
-
-    /// `true` iff this Space's ordinal is within the old Ctrl+1…Ctrl+9 range.
-    /// No longer gates switchability (see `maxShortcutOrdinal`).
-    var isShortcutAvailable: Bool { (1...ParsedSpace.maxShortcutOrdinal).contains(ordinal) }
-}
-
 public struct ParsedSpaces: Equatable {
     public let spaces: [ParsedSpace]
     public let activeID: String?

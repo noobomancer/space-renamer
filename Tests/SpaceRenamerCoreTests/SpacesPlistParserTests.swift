@@ -96,16 +96,7 @@ final class SpacesPlistParserTests: XCTestCase {
         XCTAssertEqual(result.spaces.map { $0.id }, ["1","2","3","4","5","6","7","8","9","10"])
         XCTAssertEqual(result.spaces.map { $0.ordinal }, Array(1...10))
         XCTAssertEqual(result.activeID, "1")
-        // ordinal 9 is the last shortcut-reachable Space; ordinal 10 is name-only.
-        XCTAssertTrue(result.spaces[8].isShortcutAvailable)
-        XCTAssertFalse(result.spaces[9].isShortcutAvailable)
-    }
-
-    func test_isShortcutAvailable_boundary() {
-        XCTAssertEqual(ParsedSpace.maxShortcutOrdinal, 9)
-        XCTAssertTrue(ParsedSpace(id: "a", ordinal: 1).isShortcutAvailable)
-        XCTAssertTrue(ParsedSpace(id: "b", ordinal: 9).isShortcutAvailable)
-        XCTAssertFalse(ParsedSpace(id: "c", ordinal: 10).isShortcutAvailable)
-        XCTAssertFalse(ParsedSpace(id: "d", ordinal: 0).isShortcutAvailable)
+        // (>9 desktops are fully switchable since Design Revision 2026-05-17c;
+        // no shortcut-availability cap remains on ParsedSpace.)
     }
 }
