@@ -35,9 +35,16 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         SWIFT_VERSION: "5.0"
-        ENABLE_HARDENED_RUNTIME: YES
-        CODE_SIGN_STYLE: Automatic
-        CODE_SIGN_IDENTITY: "-"
+        # Stable self-signed identity so the Accessibility (TCC) grant survives
+        # rebuilds (ad-hoc "-" had no stable Designated Requirement, so TCC never
+        # honored the grant and synthesized switches were silently dropped).
+        # Recreate the cert with scripts/create-signing-cert.sh if missing.
+        ENABLE_HARDENED_RUNTIME: NO
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "SpaceRenamer Dev"
+        CODE_SIGNING_REQUIRED: YES
+        DEVELOPMENT_TEAM: ""
+        PROVISIONING_PROFILE_SPECIFIER: ""
     dependencies:
       - package: SpaceRenamerCore
         product: SpaceRenamerCore
