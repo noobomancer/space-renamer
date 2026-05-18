@@ -24,6 +24,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         super.init()
         statusItem.button?.title = "Desktop"
         menu.delegate = self
+        // NSMenu.autoenablesItems defaults to true, which makes AppKit ignore
+        // our manual `item.isEnabled = false` and re-enable any item whose
+        // target responds to its action. We manage enabled state ourselves
+        // (disabled rows for unreachable / >9 desktops, the hint item).
+        menu.autoenablesItems = false
         statusItem.menu = menu
 
         Publishers.CombineLatest3(monitor.$spaces, monitor.$activeID, monitor.$lastLoadError)
