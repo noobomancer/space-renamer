@@ -45,6 +45,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         monitor.reload()
         populate()
+        // Immediate title refresh; the Combine sink also fires later (async,
+        // idempotent) from reload()'s @Published mutations.
         refreshTitle()
     }
 

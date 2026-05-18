@@ -51,6 +51,7 @@ final class SpaceMonitorTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: bad) }
         let monitor = SpaceMonitor(plistURL: bad, activeSpaceReader: FakeActiveSpaceReader(nil))
         XCTAssertTrue(monitor.spaces.isEmpty)
+        XCTAssertNil(monitor.activeID)
         XCTAssertNotNil(monitor.lastLoadError)
     }
 

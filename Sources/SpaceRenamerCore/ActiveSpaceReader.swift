@@ -39,9 +39,11 @@ public final class SkyLightActiveSpaceReader: ActiveSpaceReading {
         let displays = unmanaged.takeRetainedValue()
         guard let array = displays as? [[String: Any]], let primary = array.first else { return nil }
         let rawSpaces = (primary["Spaces"] as? [[String: Any]]) ?? []
-        let spaces: [ParsedSpace] = rawSpaces.enumerated().compactMap { idx, dict in
+        var nextOrdinal = 0
+        let spaces: [ParsedSpace] = rawSpaces.compactMap { dict in
             guard let msid = dict["ManagedSpaceID"] as? Int, msid > 0 else { return nil }
-            return ParsedSpace(id: String(msid), ordinal: idx + 1)
+            nextOrdinal += 1
+            return ParsedSpace(id: String(msid), ordinal: nextOrdinal)
         }
         guard !spaces.isEmpty else { return nil }
         let activeMSID = (primary["Current Space"] as? [String: Any])?["ManagedSpaceID"] as? Int
