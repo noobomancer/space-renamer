@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import KeyboardShortcuts
 import SpaceRenamerCore
 
 @MainActor
@@ -73,6 +74,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let reachable: Set<Int> = ctrlDigitMode
             ? SystemShortcutChecker.reachableSwitchToDesktopOrdinals() : []
 
+        // Column x for the (read-only) shortcut hint: just past the widest
+        // desktop name so all hints line up. Recomputed each open (titles vary).
+        let menuFont = NSFont.menuFont(ofSize: 0)
+        let widestName = monitor.spaces
+            .map { (names.name(for: $0.id, defaultOrdinal: $0.ordinal) as NSString)
+                .size(withAttributes: [.font: menuFont]).width }
+            .max() ?? 0
+        let shortcutTabX = ceil(widestName) + 36
+
         for space in monitor.spaces {
             let title = names.name(for: space.id, defaultOrdinal: space.ordinal)
             let item = NSMenuItem(title: title, action: #selector(spaceClicked(_:)), keyEquivalent: "")
@@ -84,6 +94,17 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 item.toolTip = space.ordinal > 9
                     ? "Ctrl+1\u{2013}9 can\u{2019}t reach desktop \(space.ordinal). Switch to \u{201C}Move a space\u{201D} mode in Preferences."
                     : "Enable \u{201C}Switch to Desktop \(space.ordinal)\u{201D} (Ctrl+\(space.ordinal)) in System Settings \u{2192} Keyboard \u{2192} Keyboard Shortcuts \u{2192} Mission Control, or use \u{201C}Move a space\u{201D} mode."
+            }
+            // Read-only hint of the per-desktop global hotkey (set in
+            // Preferences). Enabled rows only — disabled rows keep the plain
+            // title so AppKit's dimming isn't fought. Not a keyEquivalent, so
+            // the ⌥-Rename alternate pairing and global hotkeys are untouched.
+            if item.isEnabled,
+               let shortcut = KeyboardShortcuts.getShortcut(for: .space(space.id)) {
+                item.attributedTitle = shortcutHintTitle(name: title,
+                                                         shortcut: shortcut.description,
+                                                         font: menuFont,
+                                                         tabX: shortcutTabX)
             }
             menu.addItem(item)
 
@@ -118,6 +139,25 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let quit = NSMenuItem(title: "Quit Space Renamer", action: #selector(quitClicked), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
+    }
+
+    /// `name` left-aligned, `shortcut` in a muted aligned column at `tabX`.
+    private func shortcutHintTitle(name: String, shortcut: String,
+                                   font: NSFont, tabX: CGFloat) -> NSAttributedString {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.tabStops = [NSTextTab(textAlignment: .left, location: tabX)]
+        paragraph.lineBreakMode = .byTruncatingTail
+        let result = NSMutableAttributedString(
+            string: name,
+            attributes: [.font: font,
+                         .foregroundColor: NSColor.labelColor,
+                         .paragraphStyle: paragraph])
+        result.append(NSAttributedString(
+            string: "\t\(shortcut)",
+            attributes: [.font: font,
+                         .foregroundColor: NSColor.secondaryLabelColor,
+                         .paragraphStyle: paragraph]))
+        return result
     }
 
     private func refreshTitle() {
