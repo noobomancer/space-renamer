@@ -42,8 +42,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] spaces in self?.hotkeys.sync(knownIDs: spaces.map { $0.id }) }
 
-        promptForAccessibilityIfNeeded()
-        warnIfSwitchShortcutsDisabled()
+        // Defer the first-run alerts off the synchronous launch path so the
+        // status item appears first and the modal isn't the very first thing
+        // the user sees on a cold start (#31).
+        DispatchQueue.main.async { [weak self] in
+            self?.promptForAccessibilityIfNeeded()
+            self?.warnIfSwitchShortcutsDisabled()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {}
