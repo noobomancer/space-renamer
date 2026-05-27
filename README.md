@@ -1,5 +1,7 @@
 # Space Renamer
 
+[![CI](https://github.com/noobomancer/space-renamer/actions/workflows/ci.yml/badge.svg)](https://github.com/noobomancer/space-renamer/actions/workflows/ci.yml)
+
 A macOS menu-bar app to give Mission Control desktops custom names and switch to any of them by click or global hotkey.
 
 ![Status menu — custom desktop names with the assigned per-desktop hotkey shown on the right, the active desktop name in the menu bar, and the ⌥-click rename hint.](docs/screenshots/screenshot_2.png)
