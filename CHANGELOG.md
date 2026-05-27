@@ -6,6 +6,15 @@ Versioning is [SemVer](https://semver.org/)-ish (`0.1.x` while pre-1.0).
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-05-26
+
+### Changed
+- **Swift 6 strict concurrency** adopted at both layers. `Package.swift` declares `swift-tools-version: 6.0` with `.swiftLanguageMode(.v6)` per-target; the app target uses `SWIFT_VERSION: "6.0"`. Build is clean under strict checking — the existing `@MainActor` isolation (D9) was already correct. Two small fixes were needed: `SpaceMonitor.observer` is now `nonisolated(unsafe)` (non-`Sendable` `NSObjectProtocol` read from nonisolated `deinit` at ARC tear-down), and `NameStoreTests` overrides the `async throws` variants of `setUp`/`tearDown` so they inherit the `@MainActor` class's isolation (#26).
+- First-run alerts (Accessibility prompt + Mission Control shortcuts warning) are now deferred off the synchronous launch path via `DispatchQueue.main.async`, so the menu-bar status item appears before any modal (#31).
+
+### Fixed
+- `xcodegen generate` was silently resetting `CFBundleShortVersionString`/`CFBundleVersion` in `Info.plist` on every run, dropping committed version bumps. Both keys are now pinned in `project.yml`'s `info.properties` so the version survives regeneration.
+
 ## [0.1.3] — 2026-05-26
 
 ### Added
