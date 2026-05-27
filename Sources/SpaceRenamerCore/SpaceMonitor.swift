@@ -17,7 +17,12 @@ import os
 
     private let plistURL: URL
     private let activeReader: ActiveSpaceReading
-    private var observer: NSObjectProtocol?
+    // `nonisolated(unsafe)` is the documented escape hatch for properties of
+    // non-`Sendable` types on a `@MainActor` class that must be touched from a
+    // `nonisolated deinit`. Here it's accurate: the observer is only ever
+    // mutated from the main actor in `init`, and the `deinit` access happens
+    // at single-threaded ARC tear-down.
+    nonisolated(unsafe) private var observer: NSObjectProtocol?
 
     public init(plistURL: URL? = nil, activeSpaceReader: ActiveSpaceReading = SkyLightActiveSpaceReader()) {
         self.plistURL = plistURL

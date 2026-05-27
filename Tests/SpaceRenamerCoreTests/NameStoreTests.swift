@@ -6,16 +6,20 @@ import XCTest
     private var defaults: UserDefaults!
     private var store: NameStore!
 
-    override func setUp() {
-        super.setUp()
+    // `setUp()` / `tearDown()` on a `@MainActor` XCTestCase: use the
+    // `async throws` overrides so the override inherits the class's main-actor
+    // isolation. The sync overrides are nonisolated on the base class and can't
+    // touch @MainActor properties under Swift 6 strict concurrency.
+    override func setUp() async throws {
+        try await super.setUp()
         suiteName = "NameStoreTests-\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)!
         store = NameStore(defaults: defaults)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         defaults.removePersistentDomain(forName: suiteName)
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func test_unknownSpaceID_returnsDefaultNameUsingOrdinal() {
