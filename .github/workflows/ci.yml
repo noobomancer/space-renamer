@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  core-tests:
+    name: swift test (Core, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-13, macos-14]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        # `swift test` from the Command Line Tools toolchain lacks XCTest;
+        # pin DEVELOPER_DIR to Xcode.app explicitly.
+        run: sudo xcode-select -s /Applications/Xcode.app
+      - name: swift test
+        env:
+          DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+        run: swift test
+
+  app-build:
+    # Verifies the AppKit target still compiles. CI signs ad-hoc — this build
+    # is for compile verification only; the resulting .app is NOT runnable for
+    # Accessibility (which needs the stable self-signed "SpaceRenamer Dev" cert
+    # — see scripts/create-signing-cert.sh).
+    name: xcodebuild (app target, ad-hoc signed)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build (ad-hoc signed)
+        env:
+          DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+        run: |
+          xcodebuild \
+            -project SpaceRenamer.xcodeproj \
+            -scheme SpaceRenamer \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
