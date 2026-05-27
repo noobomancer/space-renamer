@@ -7,11 +7,14 @@ import XCTest
     private var store: NameStore!
 
     // `setUp()` / `tearDown()` on a `@MainActor` XCTestCase: use the
-    // `async throws` overrides so the override inherits the class's main-actor
-    // isolation. The sync overrides are nonisolated on the base class and can't
-    // touch @MainActor properties under Swift 6 strict concurrency.
+    // `async throws` overrides so the body inherits the class's main-actor
+    // isolation (sync overrides are nonisolated on the base and can't touch
+    // @MainActor properties). The base implementations are empty, and calling
+    // `try await super.setUp()` from this @MainActor override would send `self`
+    // across to the nonisolated base — a Swift 6 "sending" error that fires on
+    // some toolchain versions (Swift 6.0 in CI). Skipping super is the
+    // cross-version-safe fix.
     override func setUp() async throws {
-        try await super.setUp()
         suiteName = "NameStoreTests-\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)!
         store = NameStore(defaults: defaults)
@@ -19,7 +22,6 @@ import XCTest
 
     override func tearDown() async throws {
         defaults.removePersistentDomain(forName: suiteName)
-        try await super.tearDown()
     }
 
     func test_unknownSpaceID_returnsDefaultNameUsingOrdinal() {
