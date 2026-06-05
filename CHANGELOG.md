@@ -6,6 +6,14 @@ Versioning is [SemVer](https://semver.org/)-ish (`0.1.x` while pre-1.0).
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-06-04
+
+### Added
+- **Mission Control overlay labels** (opt-in: *Preferences ▸ Show name in Mission Control*). One borderless transparent `NSWindow` per Space, pinned to its target Space via the private `CGSAddWindowsToSpaces` / `CGSRemoveWindowsFromSpaces` family (same SkyLight `dlsym` mechanism the read-only `ActiveSpaceReader` already uses; no SIP, no Dock injection, no string-template edits). A continuous low-amplitude opacity `CABasicAnimation` keeps the WindowServer re-rendering so Mission Control's thumbnail snapshot stays current. The active Space's banner shows briefly on switch-in (0.1 s + 0.4 s fade) then hides; the non-active Spaces' banners stay visible so their Mission Control thumbnails include the custom name. *Design Revision 2026-06-04*.
+
+### Known limitation
+- The active-Space Mission Control thumbnail can appear without a banner — there's no public macOS signal for "Mission Control just opened" reliable enough to re-show the banner before the snapshot is taken. All non-active thumbnails consistently show their labels.
+
 ## [0.1.4] — 2026-05-26
 
 ### Changed
