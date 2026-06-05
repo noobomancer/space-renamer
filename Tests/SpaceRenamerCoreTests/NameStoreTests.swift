@@ -78,4 +78,11 @@ import XCTest
         defaults.set("bogus", forKey: "SpaceRenamer.switchMode")
         XCTAssertEqual(NameStore(defaults: defaults).switchMode, .arrow)
     }
+
+    func test_showMissionControlOverlay_defaultsFalse_thenPersists() {
+        XCTAssertFalse(store.showMissionControlOverlay)
+        store.showMissionControlOverlay = true
+        let reborn = NameStore(defaults: defaults)
+        XCTAssertTrue(reborn.showMissionControlOverlay)
+    }
 }

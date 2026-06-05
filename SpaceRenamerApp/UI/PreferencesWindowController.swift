@@ -9,13 +9,16 @@ final class PreferencesWindowController: NSWindowController, NSTableViewDataSour
     private let names: NameStore
     private let table = NSTableView()
     private let openMenuRecorder = KeyboardShortcuts.RecorderCocoa(for: .openMenu)
+    private let overlayChanged: (Bool) -> Void
     private var cancellables: Set<AnyCancellable> = []
 
-    init(monitor: SpaceMonitor, names: NameStore) {
+    init(monitor: SpaceMonitor, names: NameStore,
+         overlayChanged: @escaping (Bool) -> Void) {
         self.monitor = monitor
         self.names = names
+        self.overlayChanged = overlayChanged
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 470),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 500),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered, defer: false)
         window.title = "Space Renamer Preferences"
@@ -44,6 +47,10 @@ final class PreferencesWindowController: NSWindowController, NSTableViewDataSour
                                       target: self, action: #selector(toggleShortcutMode(_:)))
         shortcutToggle.state = (names.switchMode == .ctrlDigit) ? .on : .off
 
+        let overlayToggle = NSButton(checkboxWithTitle: "Show name in Mission Control",
+                                     target: self, action: #selector(toggleOverlay(_:)))
+        overlayToggle.state = names.showMissionControlOverlay ? .on : .off
+
         let nameCol = NSTableColumn(identifier: .init("name"))
         nameCol.title = "Desktop"; nameCol.width = 210
         let hotkeyCol = NSTableColumn(identifier: .init("hotkey"))
@@ -61,7 +68,7 @@ final class PreferencesWindowController: NSWindowController, NSTableViewDataSour
         scroll.borderType = .bezelBorder
 
         let stack = NSStackView(views: [openMenuLabel, openMenuRecorder, scroll,
-                                        shortcutToggle, launchToggle])
+                                        shortcutToggle, overlayToggle, launchToggle])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 10
@@ -87,6 +94,12 @@ final class PreferencesWindowController: NSWindowController, NSTableViewDataSour
         // default arrow mode (any desktop). The status menu rebuilds on open
         // (NSMenuDelegate), so the Ctrl+digit greying reflects this next show.
         names.switchMode = (sender.state == .on) ? .ctrlDigit : .arrow
+    }
+
+    @objc private func toggleOverlay(_ sender: NSButton) {
+        let on = (sender.state == .on)
+        names.showMissionControlOverlay = on
+        overlayChanged(on)   // AppDelegate calls overlay.setEnabled(on)
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int { monitor.spaces.count }

@@ -1,5 +1,13 @@
 import Foundation
 
+public extension Notification.Name {
+    /// Posted by `NameStore` on every name change (rename or forget). Userinfo
+    /// `["id": String]` carries the affected `ManagedSpaceID`. Subscribers can
+    /// re-query `name(for:defaultOrdinal:)` without coupling through specific
+    /// UI controllers.
+    static let spaceRenamerNameDidChange = Notification.Name("SpaceRenamer.nameDidChange")
+}
+
 @MainActor
 public final class NameStore {
     private let defaults: UserDefaults
@@ -8,6 +16,7 @@ public final class NameStore {
         static let names = "SpaceRenamer.names"               // [SpaceID: String]
         static let warned = "SpaceRenamer.didWarnSystemShortcuts"
         static let switchMode = "SpaceRenamer.switchMode"     // SwitchMode.rawValue
+        static let missionControlOverlay = "SpaceRenamer.showMissionControlOverlay"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -33,12 +42,16 @@ public final class NameStore {
             dict[spaceID] = trimmed
         }
         names = dict
+        NotificationCenter.default.post(name: .spaceRenamerNameDidChange,
+                                        object: nil, userInfo: ["id": spaceID])
     }
 
     public func forget(_ spaceID: String) {
         var dict = names
         dict.removeValue(forKey: spaceID)
         names = dict
+        NotificationCenter.default.post(name: .spaceRenamerNameDidChange,
+                                        object: nil, userInfo: ["id": spaceID])
     }
 
     public var didWarnAboutSystemShortcuts: Bool {
@@ -50,5 +63,12 @@ public final class NameStore {
     public var switchMode: SwitchMode {
         get { defaults.string(forKey: Key.switchMode).flatMap(SwitchMode.init(rawValue:)) ?? .default }
         set { defaults.set(newValue.rawValue, forKey: Key.switchMode) }
+    }
+
+    /// Per-Space label window visible (huge) in Mission Control thumbnails.
+    /// Off by default (existing users opt in); see *Design Revision 2026-06-04*.
+    public var showMissionControlOverlay: Bool {
+        get { defaults.bool(forKey: Key.missionControlOverlay) }
+        set { defaults.set(newValue, forKey: Key.missionControlOverlay) }
     }
 }

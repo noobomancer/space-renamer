@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var switcher: SwitcherEngine!
     private var menuBar: MenuBarController!
     private var hotkeys: HotkeyManager!
+    private var overlay: SpaceLabelOverlayManager!
     private var prefs: PreferencesWindowController?
     private var spaceIDsObserver: AnyCancellable?
 
@@ -31,6 +32,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             switcher: switcher,
             openPreferences: { [weak self] in self?.showPreferences() }
         )
+
+        // Mission Control overlay labels (per-Space window with two visual
+        // modes). Disabled by default; enabled via Preferences. The manager
+        // is constructed unconditionally so toggling on at runtime needs no
+        // additional wiring; setEnabled(true) is what actually spawns windows.
+        overlay = SpaceLabelOverlayManager(monitor: monitor, names: names)
+        overlay.setEnabled(names.showMissionControlOverlay)
 
         hotkeys = HotkeyManager()
         hotkeys.onSpaceHotkey = { [weak self] id in
@@ -54,7 +62,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {}
 
     private func showPreferences() {
-        if prefs == nil { prefs = PreferencesWindowController(monitor: monitor, names: names) }
+        if prefs == nil {
+            prefs = PreferencesWindowController(
+                monitor: monitor,
+                names: names,
+                overlayChanged: { [weak self] enabled in
+                    self?.overlay.setEnabled(enabled)
+                }
+            )
+        }
         prefs?.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
