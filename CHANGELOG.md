@@ -6,6 +6,9 @@ Versioning is [SemVer](https://semver.org/)-ish (`0.1.x` while pre-1.0).
 
 ## [Unreleased]
 
+### Changed
+- **Mission Control overlay is now on by default.** New installs see the per-Space banners immediately; users who had explicitly disabled it in 0.1.5 keep their choice. (Internally: `NameStore.showMissionControlOverlay` now returns `true` when the key is absent in `UserDefaults`; an explicit `false` still wins.)
+
 ## [0.1.5] — 2026-06-04
 
 ### Added

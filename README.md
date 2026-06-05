@@ -18,7 +18,7 @@ A macOS menu-bar app to give Mission Control desktops custom names and switch to
   - **Move a space** *(default, uncapped)* — relative `Ctrl+←`/`Ctrl+→` (the system "Move left/right a space" hotkeys), animated transition, any number of desktops.
   - **Shortcut mode (9 desktops max)** — `Ctrl+1`…`Ctrl+9` (the system "Switch to Desktop N" hotkeys), one instant keystroke per switch but only for desktops 1–9.
 - **⌥-click a desktop** in the menu to rename it.
-- **Mission Control overlay labels** *(opt-in: Preferences ▸ "Show name in Mission Control")*: each non-current desktop's thumbnail shows its custom name as a big banner; the active desktop flashes the banner briefly on switch-in and fades. (The active-Space thumbnail itself can appear without a banner — see *Known limitations* — this is a fundamental macOS constraint, not a bug.)
+- **Mission Control overlay labels** *(on by default; disable in Preferences ▸ "Show name in Mission Control")*: each non-current desktop's thumbnail shows its custom name as a big banner; the active desktop flashes the banner briefly on switch-in and fades. (The active-Space thumbnail itself can appear without a banner — see *Known limitations* — this is a fundamental macOS constraint, not a bug.)
 - **Launch at Login** toggle in Preferences.
 - Graceful UX when system prerequisites are missing (the menu greys unreachable rows in shortcut mode; the launch warning names the active mode's required shortcuts).
 

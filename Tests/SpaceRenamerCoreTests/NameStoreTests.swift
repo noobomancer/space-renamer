@@ -79,10 +79,11 @@ import XCTest
         XCTAssertEqual(NameStore(defaults: defaults).switchMode, .arrow)
     }
 
-    func test_showMissionControlOverlay_defaultsFalse_thenPersists() {
-        XCTAssertFalse(store.showMissionControlOverlay)
-        store.showMissionControlOverlay = true
+    func test_showMissionControlOverlay_defaultsTrue_thenPersistsExplicitFalse() {
+        // Default is on; opt-out by writing false must survive reconstruction.
+        XCTAssertTrue(store.showMissionControlOverlay)
+        store.showMissionControlOverlay = false
         let reborn = NameStore(defaults: defaults)
-        XCTAssertTrue(reborn.showMissionControlOverlay)
+        XCTAssertFalse(reborn.showMissionControlOverlay)
     }
 }

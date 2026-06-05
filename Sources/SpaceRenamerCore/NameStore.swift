@@ -66,9 +66,14 @@ public final class NameStore {
     }
 
     /// Per-Space label window visible (huge) in Mission Control thumbnails.
-    /// Off by default (existing users opt in); see *Design Revision 2026-06-04*.
+    /// **On by default** — opt-out via Preferences. (Absent key → `true`; an
+    /// explicit `false` written by the user still wins.) See *Design Revision
+    /// 2026-06-04*.
     public var showMissionControlOverlay: Bool {
-        get { defaults.bool(forKey: Key.missionControlOverlay) }
+        get {
+            if defaults.object(forKey: Key.missionControlOverlay) == nil { return true }
+            return defaults.bool(forKey: Key.missionControlOverlay)
+        }
         set { defaults.set(newValue, forKey: Key.missionControlOverlay) }
     }
 }
