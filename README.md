@@ -4,6 +4,8 @@
 
 A macOS menu-bar app to give Mission Control desktops custom names and switch to any of them by click or global hotkey.
 
+![Mission Control thumbnails — each non-active desktop shows its custom name as a banner. The active Space (highlighted in blue) intentionally renders without one; see Known limitations.](docs/screenshots/screenshot_3.png)
+
 ![Status menu — custom desktop names with the assigned per-desktop hotkey shown on the right, the active desktop name in the menu bar, and the ⌥-click rename hint.](docs/screenshots/screenshot_2.png)
 
 ![Preferences — per-desktop hotkey assignment, open-menu hotkey, switch-mode toggle (Use shortcut mode / 9 desktops max), Launch at Login.](docs/screenshots/screenshot_1.png)
