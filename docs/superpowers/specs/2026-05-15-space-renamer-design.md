@@ -106,6 +106,20 @@ User asked: can the custom name appear in Mission Control's space-overview thumb
 
 Tests: `NameStore.showMissionControlOverlay` round-trips through UserDefaults (default false). The CGS write SPIs themselves can't be unit-tested (effect is window-server state); verified on the real machine end-to-end (banners appear in every non-active thumbnail; active-Space flash on switch-in fades on schedule).
 
+### Design Revision — 2026-06-09 (restart-stable persistence keys: uuid / "primary")
+
+Closes the `ManagedSpaceID`-drift limitation (#32, previously accepted as known): names and per-desktop hotkeys were keyed by MSID, which macOS renumbers across logout/restart (real-machine evidence: a 6-desktop machine carrying MSIDs 5, 1, 8, 657, 114, 110 plus orphaned name entries for long-dead MSIDs 3, 4, 79).
+
+**Key insight:** every space dict — in both `CGSCopyManagedDisplaySpaces` and `com.apple.spaces.plist` — carries a `uuid` field that *is* macOS's own persistent space identity (it's what per-desktop wallpapers are keyed by, and wallpapers survive reboots). The sole exception: the primary desktop's `uuid` is the empty string (it carries `wsid = 1` instead).
+
+**Mechanism:**
+- `ParsedSpace` now carries `uuid` and exposes `storageID` — the uuid, or the `"primary"` sentinel when empty. Identity roles are split: **MSID (`id`) stays the session-scoped runtime handle** (switching SPIs, `CGSAddWindowsToSpaces` anchoring, `activeID` comparison); **`storageID` is the persistence key** (NameStore names, `KeyboardShortcuts.Name.space(_:)` hotkeys, the `.spaceRenamerNameDidChange` userinfo id).
+- One-shot launch migration in `AppDelegate`, gated by `NameStore.didMigrateToUUIDKeys`: builds the current MSID→storageID remap from the live snapshot and rewrites both stores (`NameStore.migrateKeys`, `HotkeyManager.migrateSpaceShortcuts`). An entry already present under the new key wins; old keys are removed; unmapped (stale) entries are left untouched. On a degraded launch (no spaces) the flag stays unset and migration retries next launch.
+
+**Accepted residuals:** (1) a desktop deleted and re-created gets a fresh uuid — its name is forgotten, which is semantically correct (it *is* a new desktop); (2) entries orphaned by drift *before* this revision can't be recovered (the old MSIDs are unmappable) and remain inert in the store; (3) the `"primary"` sentinel assumes one empty-uuid space per managed display — true for the primary display we manage (multi-display remains out of scope).
+
+Verified on the real machine: all six live desktops' names and both recorded hotkeys moved to uuid keys (`primary` for Desktop 1) on first launch; stale entries untouched; flag set. Tests: parser uuid extraction + `storageID` sentinel rule, `migrateKeys` semantics (move, new-key-wins, unmapped-untouched, persistence), `didMigrateToUUIDKeys` round-trip.
+
 ## Architecture
 
 Six components, each owning one concern. All communicate via a small set of well-defined inputs/outputs; no shared mutable state.

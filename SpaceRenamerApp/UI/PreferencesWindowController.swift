@@ -108,9 +108,9 @@ final class PreferencesWindowController: NSWindowController, NSTableViewDataSour
         let space = monitor.spaces[row]
         switch tableColumn?.identifier.rawValue {
         case "name":
-            return NSTextField(labelWithString: names.name(for: space.id, defaultOrdinal: space.ordinal))
+            return NSTextField(labelWithString: names.name(for: space.storageID, defaultOrdinal: space.ordinal))
         case "hotkey":
-            return KeyboardShortcuts.RecorderCocoa(for: .space(space.id))
+            return KeyboardShortcuts.RecorderCocoa(for: .space(space.storageID))
         default:
             return nil
         }

@@ -3,6 +3,8 @@ import KeyboardShortcuts
 
 extension KeyboardShortcuts.Name {
     static let openMenu = Self("openMenu")
+    /// `id` is the restart-stable `ParsedSpace.storageID` (uuid / "primary"),
+    /// NOT the session-scoped ManagedSpaceID — Design Revision 2026-06-09.
     static func space(_ id: String) -> Self { Self("space.\(id)") }
 }
 
@@ -18,6 +20,21 @@ final class HotkeyManager {
     init() {
         KeyboardShortcuts.onKeyUp(for: .openMenu) { [weak self] in
             self?.onOpenMenu?()
+        }
+    }
+
+    /// One-shot launch migration: move recorded per-Space shortcuts from the
+    /// old MSID-keyed names to restart-stable storageID-keyed names
+    /// (`remap[msid] = storageID`). Mirrors `NameStore.migrateKeys`: an
+    /// already-recorded shortcut under the new name wins; the old entry is
+    /// cleared either way.
+    static func migrateSpaceShortcuts(_ remap: [String: String]) {
+        for (old, new) in remap {
+            guard let shortcut = KeyboardShortcuts.getShortcut(for: .space(old)) else { continue }
+            if KeyboardShortcuts.getShortcut(for: .space(new)) == nil {
+                KeyboardShortcuts.setShortcut(shortcut, for: .space(new))
+            }
+            KeyboardShortcuts.setShortcut(nil, for: .space(old))
         }
     }
 

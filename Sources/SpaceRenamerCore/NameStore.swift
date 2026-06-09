@@ -2,7 +2,8 @@ import Foundation
 
 public extension Notification.Name {
     /// Posted by `NameStore` on every name change (rename or forget). Userinfo
-    /// `["id": String]` carries the affected `ManagedSpaceID`. Subscribers can
+    /// `["id": String]` carries the affected storage key — since *Design
+    /// Revision 2026-06-09* that is `ParsedSpace.storageID`. Subscribers can
     /// re-query `name(for:defaultOrdinal:)` without coupling through specific
     /// UI controllers.
     static let spaceRenamerNameDidChange = Notification.Name("SpaceRenamer.nameDidChange")
@@ -17,6 +18,7 @@ public final class NameStore {
         static let warned = "SpaceRenamer.didWarnSystemShortcuts"
         static let switchMode = "SpaceRenamer.switchMode"     // SwitchMode.rawValue
         static let missionControlOverlay = "SpaceRenamer.showMissionControlOverlay"
+        static let migratedToUUIDKeys = "SpaceRenamer.didMigrateToUUIDKeys"
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -52,6 +54,26 @@ public final class NameStore {
         names = dict
         NotificationCenter.default.post(name: .spaceRenamerNameDidChange,
                                         object: nil, userInfo: ["id": spaceID])
+    }
+
+    /// Rewrites stored names under new keys (`remap[oldKey] = newKey`). Used
+    /// once at launch to move MSID-keyed entries to restart-stable
+    /// `ParsedSpace.storageID` keys (uuid / `"primary"`) — see *Design Revision
+    /// 2026-06-09*. An entry already present under the new key wins; the old
+    /// key is removed either way. Entries not in `remap` are untouched.
+    public func migrateKeys(_ remap: [String: String]) {
+        var dict = names
+        for (old, new) in remap {
+            guard let value = dict.removeValue(forKey: old) else { continue }
+            if dict[new] == nil { dict[new] = value }
+        }
+        names = dict
+    }
+
+    /// One-shot guard for the MSID→storageID key migration (names + hotkeys).
+    public var didMigrateToUUIDKeys: Bool {
+        get { defaults.bool(forKey: Key.migratedToUUIDKeys) }
+        set { defaults.set(newValue, forKey: Key.migratedToUUIDKeys) }
     }
 
     public var didWarnAboutSystemShortcuts: Bool {

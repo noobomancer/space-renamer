@@ -48,6 +48,41 @@ final class SpacesPlistParserTests: XCTestCase {
         XCTAssertEqual(result.activeID, "1")
     }
 
+    func test_realCapture_uuidsParsed() throws {
+        let result = try SpacesPlistParser.parse(try loadFixture("spaces-real"))
+        XCTAssertEqual(result.spaces.map { $0.uuid },
+                       ["",
+                        "9DD24797-CA38-435A-8F4C-1EE03CB1B7CA",
+                        "8B3CC061-9B05-4356-A685-81E538C8DBAD",
+                        "B39FF9FA-F09B-40AA-9C64-C3C3E8EF661B"])
+    }
+
+    func test_storageID_isUUID_orPrimarySentinelWhenUUIDEmpty() throws {
+        // The default desktop's uuid is empty in the real plist; its storage
+        // identity is the "primary" sentinel. All others use their uuid.
+        let result = try SpacesPlistParser.parse(try loadFixture("spaces-real"))
+        XCTAssertEqual(result.spaces.map { $0.storageID },
+                       ["primary",
+                        "9DD24797-CA38-435A-8F4C-1EE03CB1B7CA",
+                        "8B3CC061-9B05-4356-A685-81E538C8DBAD",
+                        "B39FF9FA-F09B-40AA-9C64-C3C3E8EF661B"])
+    }
+
+    func test_spaceEntryWithoutUuidKey_parsesWithEmptyUuid() throws {
+        let plist: [String: Any] = [
+            "SpacesDisplayConfiguration": [
+                "Management Data": [
+                    "Monitors": [
+                        ["Spaces": [["ManagedSpaceID": 7]]]
+                    ]
+                ]
+            ]
+        ]
+        let result = try SpacesPlistParser.parse(plist)
+        XCTAssertEqual(result.spaces.map { $0.uuid }, [""])
+        XCTAssertEqual(result.spaces.map { $0.storageID }, ["primary"])
+    }
+
     func test_emptyPlist_throws() {
         XCTAssertThrowsError(try SpacesPlistParser.parse([:])) { err in
             XCTAssertEqual(err as? SpacesPlistError, .missingConfiguration)

@@ -6,6 +6,11 @@ Versioning is [SemVer](https://semver.org/)-ish (`0.1.x` while pre-1.0).
 
 ## [Unreleased]
 
+## [0.1.7] — 2026-06-10
+
+### Changed
+- **Names and per-desktop hotkeys now survive logout/restart.** Storage is keyed by the space's persistent `uuid` (the identity macOS itself keys per-desktop wallpapers by; the primary desktop, whose uuid is empty, uses a `"primary"` sentinel) instead of the session-scoped `ManagedSpaceID`, which macOS renumbers across sessions. Existing entries are migrated automatically on first launch; entries already orphaned by pre-0.1.7 MSID drift are left as-is (unrecoverable). Closes the long-standing #32 drift limitation. *Design Revision 2026-06-09*.
+
 ## [0.1.6] — 2026-06-04
 
 ### Changed

@@ -78,13 +78,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         // desktop name so all hints line up. Recomputed each open (titles vary).
         let menuFont = NSFont.menuFont(ofSize: 0)
         let widestName = monitor.spaces
-            .map { (names.name(for: $0.id, defaultOrdinal: $0.ordinal) as NSString)
+            .map { (names.name(for: $0.storageID, defaultOrdinal: $0.ordinal) as NSString)
                 .size(withAttributes: [.font: menuFont]).width }
             .max() ?? 0
         let shortcutTabX = ceil(widestName) + 36
 
         for space in monitor.spaces {
-            let title = names.name(for: space.id, defaultOrdinal: space.ordinal)
+            let title = names.name(for: space.storageID, defaultOrdinal: space.ordinal)
             let item = NSMenuItem(title: title, action: #selector(spaceClicked(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = space.id
@@ -100,7 +100,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             // title so AppKit's dimming isn't fought. Not a keyEquivalent, so
             // the ⌥-Rename alternate pairing and global hotkeys are untouched.
             if item.isEnabled,
-               let shortcut = KeyboardShortcuts.getShortcut(for: .space(space.id)) {
+               let shortcut = KeyboardShortcuts.getShortcut(for: .space(space.storageID)) {
                 item.attributedTitle = shortcutHintTitle(name: title,
                                                          shortcut: shortcut.description,
                                                          font: menuFont,
@@ -113,7 +113,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                                        action: #selector(renameClicked(_:)),
                                        keyEquivalent: "")
             renameAlt.target = self
-            renameAlt.representedObject = space.id
+            renameAlt.representedObject = space.storageID  // names are stored by storageID
             renameAlt.keyEquivalentModifierMask = .option
             renameAlt.isAlternate = true
             menu.addItem(renameAlt)
@@ -163,7 +163,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private func refreshTitle() {
         if let activeID = monitor.activeID,
            let active = monitor.spaces.first(where: { $0.id == activeID }) {
-            statusItem.button?.title = names.name(for: active.id, defaultOrdinal: active.ordinal)
+            statusItem.button?.title = names.name(for: active.storageID, defaultOrdinal: active.ordinal)
         } else if monitor.lastLoadError != nil {
             statusItem.button?.title = "\u{26A0}\u{FE0E} Desktop"
         } else {
@@ -182,7 +182,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func renameClicked(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String,
-              let space = monitor.spaces.first(where: { $0.id == id }) else { return }
+              let space = monitor.spaces.first(where: { $0.storageID == id }) else { return }
         let alert = NSAlert()
         alert.messageText = "Rename Desktop"
         alert.informativeText = "Enter a new name. Leave blank to revert to \u{201C}Desktop \(space.ordinal)\u{201D}."

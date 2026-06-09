@@ -20,6 +20,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // bundle id as a `suiteName` — UserDefaults rejects that as nonsensical.
         names = NameStore()
         monitor = SpaceMonitor()
+
+        // One-shot migration of MSID-keyed names + hotkeys to restart-stable
+        // storage IDs (uuid / "primary") — Design Revision 2026-06-09. Needs a
+        // live snapshot for the current MSID→storageID mapping; on a degraded
+        // launch (no spaces) the flag stays unset and we retry next launch.
+        if !names.didMigrateToUUIDKeys, !monitor.spaces.isEmpty {
+            let remap = Dictionary(uniqueKeysWithValues: monitor.spaces.map { ($0.id, $0.storageID) })
+            names.migrateKeys(remap)
+            HotkeyManager.migrateSpaceShortcuts(remap)
+            names.didMigrateToUUIDKeys = true
+        }
         // Routing switcher reads the user's SwitchMode per call, so the
         // Preferences toggle takes effect on the next switch (no relaunch).
         switcher = SwitcherEngine(
@@ -41,14 +52,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlay.setEnabled(names.showMissionControlOverlay)
 
         hotkeys = HotkeyManager()
-        hotkeys.onSpaceHotkey = { [weak self] id in
-            do { try self?.switcher.switch(to: id) }
+        // Hotkeys are keyed by storageID (restart-stable); the switcher takes
+        // the session MSID — resolve through the live snapshot.
+        hotkeys.onSpaceHotkey = { [weak self] storageID in
+            guard let self,
+                  let id = self.monitor.spaces.first(where: { $0.storageID == storageID })?.id
+            else { return }
+            do { try self.switcher.switch(to: id) }
             catch { NSLog("Space Renamer: hotkey switch failed: \(error)") }
         }
         hotkeys.onOpenMenu = { [weak self] in self?.menuBar.openMenu() }
         spaceIDsObserver = monitor.$spaces
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] spaces in self?.hotkeys.sync(knownIDs: spaces.map { $0.id }) }
+            .sink { [weak self] spaces in self?.hotkeys.sync(knownIDs: spaces.map { $0.storageID }) }
 
         // Defer the first-run alerts off the synchronous launch path so the
         // status item appears first and the modal isn't the very first thing

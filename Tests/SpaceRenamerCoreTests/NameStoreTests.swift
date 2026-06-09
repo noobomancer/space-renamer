@@ -79,6 +79,44 @@ import XCTest
         XCTAssertEqual(NameStore(defaults: defaults).switchMode, .arrow)
     }
 
+    func test_migrateKeys_movesNamesToNewKeys() {
+        store.setName("42", "Research")
+        store.setName("7", "Email")
+        store.migrateKeys(["42": "UUID-A", "7": "UUID-B"])
+        XCTAssertEqual(store.name(for: "UUID-A", defaultOrdinal: 1), "Research")
+        XCTAssertEqual(store.name(for: "UUID-B", defaultOrdinal: 2), "Email")
+        XCTAssertEqual(store.name(for: "42", defaultOrdinal: 1), "Desktop 1")
+        XCTAssertEqual(store.name(for: "7", defaultOrdinal: 2), "Desktop 2")
+    }
+
+    func test_migrateKeys_existingNewKeyWins_oldKeyRemoved() {
+        store.setName("42", "Stale")
+        store.setName("UUID-A", "Fresh")
+        store.migrateKeys(["42": "UUID-A"])
+        XCTAssertEqual(store.name(for: "UUID-A", defaultOrdinal: 1), "Fresh")
+        XCTAssertEqual(store.name(for: "42", defaultOrdinal: 1), "Desktop 1")
+    }
+
+    func test_migrateKeys_unmappedEntriesUntouched() {
+        store.setName("99", "Orphan")
+        store.migrateKeys(["42": "UUID-A"])
+        XCTAssertEqual(store.name(for: "99", defaultOrdinal: 3), "Orphan")
+    }
+
+    func test_migrateKeys_persistsAcrossReconstruction() {
+        store.setName("42", "Research")
+        store.migrateKeys(["42": "UUID-A"])
+        let reborn = NameStore(defaults: defaults)
+        XCTAssertEqual(reborn.name(for: "UUID-A", defaultOrdinal: 1), "Research")
+    }
+
+    func test_didMigrateToUUIDKeys_defaultsFalse_thenPersists() {
+        XCTAssertFalse(store.didMigrateToUUIDKeys)
+        store.didMigrateToUUIDKeys = true
+        let reborn = NameStore(defaults: defaults)
+        XCTAssertTrue(reborn.didMigrateToUUIDKeys)
+    }
+
     func test_showMissionControlOverlay_defaultsTrue_thenPersistsExplicitFalse() {
         // Default is on; opt-out by writing false must survive reconstruction.
         XCTAssertTrue(store.showMissionControlOverlay)

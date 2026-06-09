@@ -12,7 +12,7 @@ A macOS menu-bar app to give Mission Control desktops custom names and switch to
 
 ## Features
 
-- **Custom names per desktop**, persisted across reorders (keyed by `ManagedSpaceID`).
+- **Custom names per desktop**, persisted across reorders **and across logout/restart** (keyed by the space's persistent `uuid` — the same identity macOS uses for per-desktop wallpapers).
 - **Active desktop name in the menu bar** with a 🖥 SF Symbol.
 - **Click a desktop in the menu to switch** — uncapped, works for any number of desktops.
 - **Per-desktop global hotkeys** set in Preferences; each desktop's assigned shortcut is shown as a read-only hint to the right of its name in the menu.
@@ -64,7 +64,7 @@ Pure logic lives in the `SpaceRenamerCore` SwiftPM library and is fully unit-tes
 
 ```sh
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
-# Executed 60 tests, with 0 failures
+# Executed 69 tests, with 0 failures
 ```
 
 The `DEVELOPER_DIR` prefix is required: the Command Line Tools' bundled Swift toolchain lacks XCTest, so plain `swift test` fails.
@@ -75,13 +75,13 @@ The keystroke effect itself isn't unit-testable (it depends on macOS), but the d
 
 - **Active-Space detection** uses the read-only private SkyLight SPI `CGSCopyManagedDisplaySpaces`, resolved at runtime via `dlsym` (no link-time dependency on a private framework). `com.apple.spaces.plist`'s *Current Space* isn't kept live by macOS, so this is required to track the active desktop in real time.
 - **Switching** synthesizes the **public** Mission Control keyboard shortcuts via `CGEvent` posted to `.cghidEventTap`. This goes through the same WindowServer hotkey handler as a real keypress, producing the real animated space switch — without any private *write* APIs, scripting addition, or SIP changes.
-- **Names** are persisted in standard `UserDefaults` keyed by `ManagedSpaceID`. **Per-desktop hotkeys** use the [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) library, also keyed by `ManagedSpaceID`.
+- **Names** are persisted in standard `UserDefaults` keyed by the space's `uuid` (with a `"primary"` sentinel for the first desktop, whose uuid is empty) — the identity macOS itself persists in `com.apple.spaces.plist` and keys per-desktop wallpapers by, so names survive logout/restart. The session-scoped `ManagedSpaceID` is used only as the runtime handle for switching and window anchoring. **Per-desktop hotkeys** use the [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) library, keyed the same way.
 
 The full design — including rejected approaches (notably the SkyLight *write* SPI, with real-machine evidence that it only updates bookkeeping without performing the visible switch) — is recorded in [`docs/superpowers/specs/2026-05-15-space-renamer-design.md`](docs/superpowers/specs/2026-05-15-space-renamer-design.md).
 
 ## Known limitations
 
-- **`ManagedSpaceID` drift across logout/restart**: macOS occasionally renumbers the IDs even when the desktop layout is unchanged. Both names and per-desktop hotkeys are keyed by these IDs, so they can become orphaned in that case. An automatic old→new remap is planned but not yet implemented. Workaround: reassign in Preferences once after a drift.
+- **Deleted-and-recreated desktops forget their name**: names are keyed by the space's persistent `uuid`, so they survive logout/restart — but removing a desktop and creating a new one in its place yields a new uuid (it *is* a new desktop), so the old name doesn't carry over. Names orphaned by `ManagedSpaceID` drift in versions before 0.1.7 can't be recovered automatically; rename once and it sticks from then on.
 - **Multi-display**: only the primary display's Spaces are managed at present.
 - **Shortcut mode** is hard-capped at 9 desktops — macOS only defines *Switch to Desktop 1–9*. Use the default arrow mode for >9.
 - **Multi-hop arrow switches** post one keystroke per ordinal step with a short pacing delay, so a far jump (e.g. desktop 1 → 11) takes ~1 second.

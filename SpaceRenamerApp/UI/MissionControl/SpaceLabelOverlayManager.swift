@@ -64,8 +64,10 @@ final class SpaceLabelOverlayManager {
             guard let id = note.userInfo?["id"] as? String else { return }
             Task { @MainActor in
                 guard let self else { return }
-                guard let space = self.monitor.spaces.first(where: { $0.id == id }),
-                      let window = self.windows[id] else { return }
+                // The notification carries the storageID (names are stored by
+                // it); windows are keyed by the session MSID.
+                guard let space = self.monitor.spaces.first(where: { $0.storageID == id }),
+                      let window = self.windows[space.id] else { return }
                 window.setName(self.names.name(for: id, defaultOrdinal: space.ordinal))
             }
         }
@@ -86,7 +88,7 @@ final class SpaceLabelOverlayManager {
         // banner is transient (fades after a moment); the non-active windows
         // stay visible for the Mission Control thumbnails.
         for space in spaces {
-            let name = names.name(for: space.id, defaultOrdinal: space.ordinal)
+            let name = names.name(for: space.storageID, defaultOrdinal: space.ordinal)
             let isActive = (space.id == activeID)
             if let window = windows[space.id] {
                 window.setName(name)
